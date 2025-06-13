@@ -1,6 +1,6 @@
 import React from 'react';
 import { NhostApolloProvider } from '@nhost/react-apollo';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthenticationStatus } from '@nhost/react';
 import nhost from './nhost';
 import Login from './Login';
@@ -17,7 +17,7 @@ function PrivateRoute({ children }) {
 export default function App() {
   return (
     <NhostApolloProvider nhost={nhost}>
-      <Router>
+      <BrowserRouter basename="/QuantumSafe">
         <Routes>
           {/* Public login route */}
           <Route path="/login" element={<Login />} />
@@ -26,7 +26,7 @@ export default function App() {
           {/* Fallback for unknown routes */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
-      </Router>
+      </BrowserRouter>
     </NhostApolloProvider>
   );
 }
