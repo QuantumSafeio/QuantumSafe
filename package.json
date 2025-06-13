@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-
   "homepage": "https://quantumsafeio.github.io/QuantumSafe/",
   "scripts": {
     "dev": "vite",
@@ -26,6 +25,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.5.2",
-    "gh-pages": "^6.0.0"
+    "gh-pages": "^6.0.0",
+    "vite-plugin-gh-pages": "^1.0.1"
   }
 }
