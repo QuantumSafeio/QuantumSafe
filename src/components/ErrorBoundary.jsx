@@ -24,26 +24,26 @@ class ErrorBoundary extends React.Component {
           justifyContent: 'center',
           alignItems: 'center',
           height: '100vh',
-          background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
+          background: '#f9fafb',
           padding: '20px',
           textAlign: 'center'
         }}>
           <div style={{
-            background: 'rgba(255, 0, 0, 0.1)',
-            border: '2px solid rgba(255, 0, 0, 0.3)',
+            background: '#fef2f2',
+            border: '2px solid #fecaca',
             borderRadius: '15px',
             padding: '30px',
             maxWidth: '500px'
           }}>
             <h1 style={{
-              color: '#ff4757',
+              color: '#dc2626',
               fontSize: '2rem',
               marginBottom: '20px'
             }}>
               ⚠️ Application Error
             </h1>
             <p style={{
-              color: '#ffffff',
+              color: '#111827',
               fontSize: '16px',
               marginBottom: '20px',
               lineHeight: '1.6'
@@ -51,7 +51,7 @@ class ErrorBoundary extends React.Component {
               Something went wrong. Please try refreshing the page.
             </p>
             <details style={{
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: '#6b7280',
               fontSize: '12px',
               marginBottom: '20px',
               textAlign: 'left'
@@ -60,7 +60,7 @@ class ErrorBoundary extends React.Component {
                 Error Details
               </summary>
               <pre style={{
-                background: 'rgba(0, 0, 0, 0.3)',
+                background: '#f3f4f6',
                 padding: '10px',
                 borderRadius: '5px',
                 overflow: 'auto',
@@ -74,7 +74,7 @@ class ErrorBoundary extends React.Component {
               onClick={() => window.location.reload()}
               style={{
                 padding: '12px 24px',
-                background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
+                background: '#6366f1',
                 border: 'none',
                 borderRadius: '10px',
                 color: 'white',

@@ -35,8 +35,8 @@ export default function App() {
       <BrowserRouter basename="/QuantumSafe">
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: '#0a0a0a',
-          color: '#ffffff', 
+          backgroundColor: '#f9fafb',
+          color: '#111827', 
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' 
         }}>
           <Routes>

@@ -8,19 +8,19 @@ export default function LoadingSpinner({ message = 'Loading...' }) {
       justifyContent: 'center',
       alignItems: 'center',
       height: '100vh',
-      background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
+      background: '#f9fafb',
       gap: '20px'
     }}>
       <div style={{
         width: '60px',
         height: '60px',
-        border: '4px solid rgba(0, 245, 255, 0.3)',
-        borderTop: '4px solid #00f5ff',
+        border: '4px solid #e5e7eb',
+        borderTop: '4px solid #6366f1',
         borderRadius: '50%',
         animation: 'spin 1s linear infinite'
       }} />
       <p style={{
-        color: '#00f5ff',
+        color: '#6366f1',
         fontSize: '18px',
         fontWeight: '600'
       }}>
