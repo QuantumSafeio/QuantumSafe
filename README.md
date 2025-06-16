@@ -51,11 +51,11 @@ npm install
 # Start development server
 npm run dev
 
-# Build production version
-npm run build
+# Build production version (optimized)
+npm run optimize
 
-# Deploy to GitHub Pages
-npm run deploy
+# Clean temporary files
+npm run clean
 ```
 
 ## 🛠️ Technology Stack
@@ -64,8 +64,8 @@ npm run deploy
 - **Database**: Supabase
 - **Authentication**: Supabase Auth
 - **Blockchain**: Ethers.js
-- **Styling**: Inline CSS with modern design
-- **Deployment**: GitHub Pages
+- **Styling**: Modern CSS with responsive design
+- **Deployment**: GitHub Pages Ready
 
 ## 🔧 Development
 
@@ -74,6 +74,24 @@ npm run deploy
 3. Set up environment variables in `.env`
 4. Run development server with `npm run dev`
 5. Open `http://localhost:5173/QuantumSafe/`
+
+## 📊 Performance Optimizations
+
+- ✅ Source maps disabled for production
+- ✅ Terser compression enabled
+- ✅ Console.log removal in production
+- ✅ Optimized chunk splitting
+- ✅ Asset optimization
+- ✅ Cache optimization
+
+## 🚀 Deployment to GitHub Pages
+
+The project is optimized for GitHub Pages deployment:
+
+1. Build files are excluded from Git
+2. Optimized build process
+3. Proper base path configuration
+4. Asset optimization
 
 ## 🌟 Contributing
 
