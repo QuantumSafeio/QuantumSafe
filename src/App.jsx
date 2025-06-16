@@ -1,56 +1,56 @@
-الاستيراد.. React من... ... "رد فعل";
-استيراد {متصفحالجذور, الطرق, الطريق, التنقل.. } من".رد فعل-روتر-دوم"رد فعل-روتر-دوم";
-استيراد  { useAuth } من './hooks/useAuth'؛{ useAuth } من './hooks/useAuth'؛
-الاستيراد  .تسجيل الدخول من './المكونات/التسجيل'؛ تسجيل  الدخول. الدخول. من...... './components/Login';
-الاستيراد.. لوحة القيادة. القيادة. from '/المكونات/لوحة القيادة'; لوحة القيادة. القيادة. from '/المكونات/لوحة القيادة';
-استيراد  LoadingSpinner من './المكونات/تحميل الدوار'؛تحميل  الدوار الدوار من './المكونات/تحميل الدوار'؛
-استيراد ErrorBoundary من استيراد ErrorBoundary من '/المكونات/الخطأ ب;
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import LoadingSpinner from './components/LoadingSpinner';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// مكون الحماية للصفحات المحمية
-وظيفة  .الطريق الخاص الخاص ({الأطفال }) { الطريق  الخاص الخاص({ children }) {
-  كونست.. { user, التحميل.... } = useAuth();
+// Protected route component for authenticated pages
+function PrivateRoute({ children }) {
+  const { user, loading } = useAuth();
   
-  إذا...... (loading) {
-     ... <تحميل رسالة الدوار..=" جاري التحقق من بيانات الم />;>; / >؛ />;; />; />; />;جاري التحقق من بيانات الم />;>; / >؛ />;; />; />; <تحميل رسالة الدوار..="
- } } } } 
+  if (loading) {
+    return <LoadingSpinner message="Checking user credentials..." />;
+  }
   
-  عودة المستخدم؟ الأطفال:  <Navigate to="/login"/login" استبدال />;replace />;
+  return user ? children : <Navigate to="/login" replace />;
 }
 
-// مكون إعادة التوجيه للمستخدمين المسجلين
-دالة الطريق العام ({ children }) {
- كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. {. المستخدم.., التحميل.. } = استخدام الاستحقاق () ؛
+// Public route component for redirecting authenticated users
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth();
   
-  إذا (تحميل) .  {
- العودة. < . تحميل   الدوار. العودة.= العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة.     <تحميل الدوار الدوار رسالة..=message="جاري التحقق من بيانات المستخدم..." />;
- } 
+  if (loading) {
+    return <LoadingSpinner message="Checking user credentials..." />;
+  }
   
-    عودة المستخدم؟    <التنقل..    :.... الأطفال؛: الأطفال؛to : الأطفال؛: الأطفال؛  
+  return user ? <Navigate to="/" replace /> : children;
 }
 
-// المكون الرئيسي للتطبيق
-تصدير الدالة الافتراضية التطبيق () {
- العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( 
+// Main App component
+export default function App() {
+  return (
     <ErrorBoundary>
-      <متصفح روتر روتر basename="/QuantumSafe">
+      <BrowserRouter basename="/QuantumSafe">
         <div style={{ 
-          minالارتفاع: '100vh', 
-          خلفية   اللون اللون : '#0a0a0a',
+          minHeight: '100vh', 
+          backgroundColor: '#0a0a0a',
           color: '#ffffff',
-          fontFamily: 'القاهرة، -نظام التفاح، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif'
+          fontFamily: 'Cairo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         }}>
           <Routes>
-            {/* صفحة تسجيل الدخول */}
+            {/* Login page */}
             <Route 
-              المسار..="/تسجيل الدخول" 
- عنصر = {
+              path="/login" 
+              element={
                 <PublicRoute>
                   <Login />
                 </PublicRoute>
               } 
- /> 
+            />
             
-            {/* لوحة التحكم المحمية */}
+            {/* Protected dashboard */}
             <Route 
               path="/" 
               element={
@@ -60,7 +60,7 @@
               } 
             />
             
-            {/* إعادة توجيه ل}}}}}}
+            {/* Redirect all other routes to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
