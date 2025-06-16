@@ -284,14 +284,22 @@ Details:
 
       <div style={{ padding: '40px 20px' }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          {/* Hero Section */}
+          {/* Hero Section with Brand Logo */}
           <div style={{
             textAlign: 'center',
             marginBottom: '60px',
             padding: '60px 20px',
-            background: 'rgba(255, 255, 255, 0.05)',
+            background: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('/file_0000000001e861fd98ec9668de3a3e08.png')`,
+            backgroundSize: 'contain',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
             borderRadius: '30px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            minHeight: '400px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center'
           }}>
             <h2 style={{
               fontSize: '3.5rem',
@@ -299,7 +307,8 @@ Details:
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               marginBottom: '20px',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)'
             }}>
               Protect Your Digital Assets from Quantum Threats
             </h2>
@@ -308,72 +317,66 @@ Details:
               opacity: 0.9,
               maxWidth: '800px',
               margin: '0 auto 40px',
-              lineHeight: '1.6'
+              lineHeight: '1.6',
+              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
             }}>
               Advanced AI-powered scanning for smart contracts, wallets, NFTs, and DApps. 
               Detect quantum vulnerabilities before they become threats.
             </p>
-            
-            {/* Key Features */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '30px',
-              marginTop: '50px'
+          </div>
+
+          {/* Quantum Revolution Banner */}
+          <div style={{
+            marginBottom: '60px',
+            background: `linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('/file_00000000fc9861f7bebcb8e761e3e5ad.png')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            borderRadius: '25px',
+            padding: '50px 30px',
+            textAlign: 'center',
+            border: '2px solid rgba(0, 245, 255, 0.3)',
+            boxShadow: '0 10px 30px rgba(0, 245, 255, 0.2)'
+          }}>
+            <h3 style={{
+              fontSize: '2.5rem',
+              color: '#00f5ff',
+              marginBottom: '20px',
+              fontWeight: 'bold',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)'
             }}>
-              <div style={{
-                background: 'rgba(0, 245, 255, 0.1)',
-                padding: '30px',
-                borderRadius: '20px',
-                border: '1px solid rgba(0, 245, 255, 0.3)'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🔍</div>
-                <h3 style={{ color: '#00f5ff', marginBottom: '10px' }}>Advanced Scanning</h3>
-                <p style={{ opacity: 0.8, fontSize: '14px' }}>
-                  Detect 10+ quantum vulnerabilities using cutting-edge algorithms
-                </p>
-              </div>
-              
-              <div style={{
-                background: 'rgba(255, 0, 255, 0.1)',
-                padding: '30px',
-                borderRadius: '20px',
-                border: '1px solid rgba(255, 0, 255, 0.3)'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🎯</div>
-                <h3 style={{ color: '#ff00ff', marginBottom: '10px' }}>Multi-Asset Support</h3>
-                <p style={{ opacity: 0.8, fontSize: '14px' }}>
-                  Scan contracts, wallets, NFTs, memecoins, and DApps
-                </p>
-              </div>
-              
-              <div style={{
-                background: 'rgba(0, 255, 136, 0.1)',
-                padding: '30px',
-                borderRadius: '20px',
-                border: '1px solid rgba(0, 255, 136, 0.3)'
-              }}>
-                <div style={{ fontSize: '3rem', marginBottom: '15px' }}>💎</div>
-                <h3 style={{ color: '#00ff88', marginBottom: '10px' }}>Earn Rewards</h3>
-                <p style={{ opacity: 0.8, fontSize: '14px' }}>
-                  Get points for scans, referrals, and social engagement
-                </p>
-              </div>
-            </div>
+              THE QUANTUM REVOLUTION IS COMING
+            </h3>
+            <p style={{
+              fontSize: '1.5rem',
+              color: '#ffffff',
+              marginBottom: '15px',
+              fontWeight: 'bold',
+              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
+              ONLY THE PREPARED WILL SURVIVE
+            </p>
+            <p style={{
+              fontSize: '1.1rem',
+              opacity: 0.9,
+              maxWidth: '600px',
+              margin: '0 auto',
+              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
+              QuantumSafe is your fortress in a post-quantum world. Join us and secure the future.
+            </p>
           </div>
 
           {/* Main Content Grid */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: '2fr 1fr', 
-            gap: '40px',
-            '@media (max-width: 1024px)': {
-              gridTemplateColumns: '1fr'
-            }
+            gridTemplateColumns: window.innerWidth > 1024 ? '2fr 1fr' : '1fr', 
+            gap: '40px'
           }}>
-            {/* Scanning Section */}
+            {/* Scanning Section with City Protection Image */}
             <div style={{
-              background: 'rgba(255, 255, 255, 0.1)',
+              background: `linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)), url('/file_000000009ff4620a8561d86028f3e81c.png')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
               borderRadius: '25px',
               padding: '40px',
               backdropFilter: 'blur(15px)',
@@ -386,7 +389,8 @@ Details:
                 fontWeight: 'bold',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '15px'
+                gap: '15px',
+                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)'
               }}>
                 🔍 Digital Asset Scanner
                 {!user && (
@@ -408,7 +412,8 @@ Details:
                   display: 'block', 
                   marginBottom: '12px', 
                   fontWeight: 'bold',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
                 }}>
                   Asset Type:
                 </label>
@@ -440,7 +445,8 @@ Details:
                   display: 'block', 
                   marginBottom: '12px', 
                   fontWeight: 'bold',
-                  fontSize: '16px'
+                  fontSize: '16px',
+                  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
                 }}>
                   Asset Address or Data:
                 </label>
@@ -805,11 +811,13 @@ Details:
             </div>
           </div>
 
-          {/* Quantum Threats Section */}
+          {/* Quantum Threats Section with Shor's Algorithm Image */}
           <div style={{
             marginTop: '60px',
             padding: '40px',
-            background: 'rgba(255, 0, 0, 0.05)',
+            background: `linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('/file_00000000b858620a9543846b0a6535e7.png')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             borderRadius: '25px',
             border: '1px solid rgba(255, 0, 0, 0.2)'
           }}>
@@ -818,10 +826,27 @@ Details:
               marginBottom: '30px',
               fontSize: '2rem',
               fontWeight: 'bold',
-              textAlign: 'center'
+              textAlign: 'center',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)'
             }}>
-              ⚠️ Detected Quantum Vulnerabilities
+              ⚠️ Quantum Threats Are Real
             </h3>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '30px'
+            }}>
+              <p style={{
+                fontSize: '1.2rem',
+                color: '#ffffff',
+                maxWidth: '800px',
+                margin: '0 auto',
+                lineHeight: '1.6',
+                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+              }}>
+                Shor's Algorithm isn't fiction. It's a quantum dagger aimed at your blockchain keys.
+                QuantumSafe defends your assets by making today's vulnerabilities tomorrow's relics.
+              </p>
+            </div>
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
@@ -840,7 +865,8 @@ Details:
                   padding: '25px',
                   borderRadius: '15px',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  backdropFilter: 'blur(10px)'
                 }}>
                   <div style={{
                     display: 'flex',
@@ -867,6 +893,44 @@ Details:
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Quantum Algorithms Protection Section */}
+          <div style={{
+            marginTop: '60px',
+            padding: '40px',
+            background: `linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('/file_00000000c6c461f484ad6b46cf5665e7.png')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            borderRadius: '25px',
+            border: '1px solid rgba(0, 245, 255, 0.3)'
+          }}>
+            <h3 style={{ 
+              color: '#00f5ff', 
+              marginBottom: '30px',
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              textAlign: 'center',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)'
+            }}>
+              🛡️ QuantumSafe Protection Against All Threats
+            </h3>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '30px'
+            }}>
+              <p style={{
+                fontSize: '1.2rem',
+                color: '#ffffff',
+                maxWidth: '800px',
+                margin: '0 auto',
+                lineHeight: '1.6',
+                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+              }}>
+                Our advanced quantum-resistant technology protects against Grover's Algorithm, 
+                Shor's Algorithm, and Lattice-Based Cryptography compromises.
+              </p>
             </div>
           </div>
 
