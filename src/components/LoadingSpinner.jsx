@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function LoadingSpinner({ message = 'Loading...' }) {
+export default function LoadingSpinner({ message = 'جاري التحميل...' }) {
   return (
     <div style={{
       display: 'flex',
@@ -8,19 +8,19 @@ export default function LoadingSpinner({ message = 'Loading...' }) {
       justifyContent: 'center',
       alignItems: 'center',
       height: '100vh',
-      background: '#f9fafb',
+      background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
       gap: '20px'
     }}>
       <div style={{
         width: '60px',
         height: '60px',
-        border: '4px solid #e5e7eb',
-        borderTop: '4px solid #6366f1',
+        border: '4px solid rgba(0, 245, 255, 0.3)',
+        borderTop: '4px solid #00f5ff',
         borderRadius: '50%',
         animation: 'spin 1s linear infinite'
       }} />
       <p style={{
-        color: '#6366f1',
+        color: '#00f5ff',
         fontSize: '18px',
         fontWeight: '600'
       }}>

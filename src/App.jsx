@@ -10,7 +10,7 @@ function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner message="Checking authentication..." />;
+    return <LoadingSpinner message="جاري التحقق من المصادقة..." />;
   }
   
   return user ? children : <Navigate to="/login" replace />;
@@ -20,7 +20,7 @@ function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner message="Loading application..." />;
+    return <LoadingSpinner message="جاري تحميل التطبيق..." />;
   }
   
   return user ? <Navigate to="/" replace /> : children;
@@ -32,8 +32,8 @@ export default function App() {
       <BrowserRouter basename="/QuantumSafe">
         <div style={{ 
           minHeight: '100vh', 
-          backgroundColor: '#f9fafb',
-          color: '#111827', 
+          backgroundColor: '#0a0a0a',
+          color: '#ffffff', 
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' 
         }}>
           <Routes>
