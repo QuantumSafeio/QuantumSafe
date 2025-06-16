@@ -1,32 +1,58 @@
 import React from 'react';
-import { NhostApolloProvider } from '@nhost/react-apollo';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthenticationStatus } from '@nhost/react';
-import nhost from './nhost';
-import Login from './Login';
-import Dashboard from './Dashboard';
+import { supabase } from './lib/supabase';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import { useAuth } from './hooks/useAuth';
 
-// Unified private route for authenticated access
+// مكون الحماية للصفحات المحمية
 function PrivateRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuthenticationStatus();
-  if (isLoading) return <div>Loading...</div>;
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <div>جاري التحميل...</div>
+      </div>
+    );
+  }
+  
+  return user ? children : <Navigate to="/login" />;
 }
 
-// Main application component with routing
+// المكون الرئيسي للتطبيق
 export default function App() {
   return (
-    <NhostApolloProvider nhost={nhost}>
-      <BrowserRouter basename="/QuantumSafe">
+    <BrowserRouter basename="/QuantumSafe">
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: '#0a0a0a',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif'
+      }}>
         <Routes>
-          {/* Public login route */}
+          {/* صفحة تسجيل الدخول */}
           <Route path="/login" element={<Login />} />
-          {/* Protected dashboard route */}
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          {/* Fallback for unknown routes */}
+          
+          {/* لوحة التحكم المحمية */}
+          <Route 
+            path="/" 
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            } 
+          />
+          
+          {/* إعادة توجيه للصفحات غير الموجودة */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
-      </BrowserRouter>
-    </NhostApolloProvider>
+      </div>
+    </BrowserRouter>
   );
 }
