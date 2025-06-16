@@ -1,54 +1,54 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import LoadingSpinner from './components/LoadingSpinner';
-import ErrorBoundary from './components/ErrorBoundary';
+الاستيراد.. React من... ... "رد فعل";
+استيراد {متصفحالجذور, الطرق, الطريق, التنقل.. } من".رد فعل-روتر-دوم"رد فعل-روتر-دوم";
+استيراد  { useAuth } من './hooks/useAuth'؛{ useAuth } من './hooks/useAuth'؛
+الاستيراد  .تسجيل الدخول من './المكونات/التسجيل'؛ تسجيل  الدخول. الدخول. من...... './components/Login';
+الاستيراد.. لوحة القيادة. القيادة. from '/المكونات/لوحة القيادة'; لوحة القيادة. القيادة. from '/المكونات/لوحة القيادة';
+استيراد  LoadingSpinner من './المكونات/تحميل الدوار'؛تحميل  الدوار الدوار من './المكونات/تحميل الدوار'؛
+استيراد ErrorBoundary من استيراد ErrorBoundary من '/المكونات/الخطأ ب;
 
 // مكون الحماية للصفحات المحمية
-function PrivateRoute({ children }) {
-  const { user, loading } = useAuth();
+وظيفة  .الطريق الخاص الخاص ({الأطفال }) { الطريق  الخاص الخاص({ children }) {
+  كونست.. { user, التحميل.... } = useAuth();
   
-  if (loading) {
-    return <LoadingSpinner message="جاري التحقق من بيانات المستخدم..." />;
-  }
+  إذا...... (loading) {
+     ... <تحميل رسالة الدوار..=" جاري التحقق من بيانات الم />;>; / >؛ />;; />; />; />;جاري التحقق من بيانات الم />;>; / >؛ />;; />; />; <تحميل رسالة الدوار..="
+ } } } } 
   
-  return user ? children : <Navigate to="/login" replace />;
+  عودة المستخدم؟ الأطفال:  <Navigate to="/login"/login" استبدال />;replace />;
 }
 
 // مكون إعادة التوجيه للمستخدمين المسجلين
-function PublicRoute({ children }) {
-  const { user, loading } = useAuth();
+دالة الطريق العام ({ children }) {
+ كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. كونست. {. المستخدم.., التحميل.. } = استخدام الاستحقاق () ؛
   
-  if (loading) {
-    return <LoadingSpinner message="جاري التحقق من بيانات المستخدم..." />;
-  }
+  إذا (تحميل) .  {
+ العودة. < . تحميل   الدوار. العودة.= العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة. العودة.     <تحميل الدوار الدوار رسالة..=message="جاري التحقق من بيانات المستخدم..." />;
+ } 
   
-  return user ? <Navigate to="/" replace /> : children;
+    عودة المستخدم؟    <التنقل..    :.... الأطفال؛: الأطفال؛to : الأطفال؛: الأطفال؛  
 }
 
 // المكون الرئيسي للتطبيق
-export default function App() {
-  return (
+تصدير الدالة الافتراضية التطبيق () {
+ العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( العودة ( 
     <ErrorBoundary>
-      <BrowserRouter basename="/QuantumSafe">
+      <متصفح روتر روتر basename="/QuantumSafe">
         <div style={{ 
-          minHeight: '100vh', 
-          backgroundColor: '#0a0a0a',
+          minالارتفاع: '100vh', 
+          خلفية   اللون اللون : '#0a0a0a',
           color: '#ffffff',
-          fontFamily: 'Cairo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          fontFamily: 'القاهرة، -نظام التفاح، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif'
         }}>
           <Routes>
             {/* صفحة تسجيل الدخول */}
             <Route 
-              path="/login" 
-              element={
+              المسار..="/تسجيل الدخول" 
+ عنصر = {
                 <PublicRoute>
                   <Login />
                 </PublicRoute>
               } 
-            />
+ /> 
             
             {/* لوحة التحكم المحمية */}
             <Route 
@@ -60,7 +60,7 @@ export default function App() {
               } 
             />
             
-            {/* إعادة توجيه للصفحات غير الموجودة */}
+            {/* إعادة توجيه ل}}}}}}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
