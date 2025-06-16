@@ -1,49 +1,49 @@
-الاستيراد React from 'react';
-الاستيراد { BrowserRouter, {, متصفح, Navigate } from الطرق;
-import { استخدام  اليوتاليوت  } from ' . useAuth } from './hooks/useAuth';
-'/المكونات/التسجيلات' Login المكونات './components/Login'التسجيلات
-import Dashboard from './components/Dashboard';
-import LoadingSpinner from './components/LoadingSpinner';
-import ErrorBoundary from './components/ErrorBoundary';
+الاستيراد  .رد.............................. فعل. فعل. من...... 'react';
+الاستيراد  .{ متصفح روتر روتر, {روتر, الطرق., التنقل.. } من... .الطرق;
+الاستيراد.. {      استخدامhooks/useAuth'; اليوت     
+الاستيراد/المكونات/التسجيلات'. تسجيل الدخول. الدخول.  المكونات   '/المكونات/التسجيلات'التسجيلات
+'  .لوحة القيادة من ' ;من... ... '/المكونات/لوحة القيادة';
+'; تحميل  الدوار  من  المكونات;
+الاستيراد  .خطأ الحدود الحدود من ' ;from './components/ErrorBoundary';
 
 // مكون الطريق المحمي للصفحات الموثقة
-وظيفة PrivateRoute({ الطريق }) (
-  كونست { user, { المستخدم = useAuth();
+وظيفة  .PrivateRoute({ الطريقالخاص  }) (.
+   كونست   كونست  كونست { المستخدم.المستخدم.userالمستخدم. { التحميل.... = استخدام اليوتاستخدام اليوتuseAuth();
   
-  إذا (loading) {
-    العودةالعودة <LoadingSpinner messageتحميل  رسالة />;
-  }
+  إذا...... (التحميل..) ..
+    العودة.. <تحميل تحميل الدوار  messageتحميل  رسالة  رسالة.>;
+ } 
   
-  العودة user ? children : <Navigate to="/login" < />;
+ عودة المستخدم؟ الأطفال: عودة المستخدم؟ الأطفال: <    .المستخدم؟ الأطفال. العودة.Navigate to="/login"     < />;
 }
 
-// Public route component for redirecting authenticated users
-function PublicRoute({ children }) {
-  كونست { user, المستخدم المستخدم = useAuth();
+// عنصر الطريق العام لإعادة توجيه المستخدمين المصادق عليهم
+وظيفة PublicRoute (وظيفةدالة.الأطفال) }) {
+  كونست  .{ المستخدم.., المستخدم  .المستخدم = useAuth();
   
-    إذا (تحميل) .    {
- العودة. <LoadingSpinner العودة="Checking user credentials..." />;
-  }
+  إذا (تحميل) .  
+ العودة.. العودةتحميلSpinner العودة = "التحقق من بيانات اعتماد المستخدم"... />;
+ } 
   
-  عودة المستخدم؟ عودة  المستخدم؟     :.... الأطفال؛: الأطفال؛to : الأطفال؛: الأطفال؛   Navigate to="/" replace /> : الأطفال؛<Navigate to="/" replace /> : children;
+ عودة المستخدم؟ <Navigate إلى...="/"استبدال />: الأطفال؛
 }
 
-// Main App component
-export default function App() {
-  return (
-    <خطأ>
-      <متصفح basename="/QuantumSafe">
+// مكون التطبيق الرئيسي
+تصدير الدالة الافتراضية التطبيق () {
+ العودة ( العودة ( 
+    <خطأ الحدود الحدود>
+      <متصفح روتر روتر اسم القاعدة. القاعدة.="/QuantumSafe">
         <div style={{ 
           minالارتفاع: '100vh', 
-          خلفية: اللون,
-          color: '#ffffff',
-          fontFamily: 'Cairo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-        }}>
+          خلفية  اللون اللون: '#0a0a0a',
+ اللون..: '#ffffff', اللون: '#ffffff',اللون..: '#ffffff', 
+ fontFamily: 'القاهرة، - نظام التفاح، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif' fontFamily: 'Cairo، -apple-system، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif'fontFamily: 'القاهرة، - نظام التفاح، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif' 
+ }}> 
           <Routes>
             {/* صفحة تسجيل الدخول */}
             <Route 
-              المسار="/login" 
-              element={
+              المسار....="/تسجيل الدخول"  
+ عنصر = {
                 <PublicRoute>
                   <Login />
                 </PublicRoute>
@@ -64,7 +64,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
-      </BrowserRouter>
-    </ErrorBoundary>
+      <///
+ < </
   );
 }
