@@ -16,10 +16,20 @@ export default function Dashboard() {
   const [selectedAssetType, setSelectedAssetType] = useState('contract');
   const [assetInput, setAssetInput] = useState('');
   const [currentScanResult, setCurrentScanResult] = useState(null);
+  const [activeTab, setActiveTab] = useState('scanner');
+
+  // Analytics state
+  const [analytics, setAnalytics] = useState({
+    totalThreatsDetected: 0,
+    criticalVulnerabilities: 0,
+    assetsProtected: 0,
+    riskReduction: 0
+  });
 
   useEffect(() => {
     if (user) {
       fetchUserData();
+      calculateAnalytics();
     }
   }, [user]);
 
@@ -51,13 +61,42 @@ export default function Dashboard() {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       
       setScanResults(scans || []);
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const calculateAnalytics = async () => {
+    try {
+      const { data: scans } = await supabase
+        .from('scan_results')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (scans) {
+        const totalThreats = scans.reduce((sum, scan) => 
+          sum + (scan.vulnerabilities?.length || 0), 0);
+        
+        const criticalVulns = scans.filter(scan => 
+          scan.quantum_risk === 'high').length;
+        
+        const assetsProtected = scans.length;
+        const riskReduction = Math.min(assetsProtected * 15, 95);
+
+        setAnalytics({
+          totalThreatsDetected: totalThreats,
+          criticalVulnerabilities: criticalVulns,
+          assetsProtected,
+          riskReduction
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating analytics:', error);
     }
   };
 
@@ -135,8 +174,9 @@ export default function Dashboard() {
         }));
       }
 
-      // Refresh scan results
+      // Refresh data
       fetchUserData();
+      calculateAnalytics();
       
     } catch (error) {
       console.error('Scan error:', error);
@@ -147,30 +187,81 @@ export default function Dashboard() {
   };
 
   const assetTypes = [
-    { value: 'contract', label: '🔐 Smart Contract', points: 10 },
-    { value: 'wallet', label: '💰 Wallet', points: 10 },
-    { value: 'nft', label: '🎨 NFT', points: 10 },
-    { value: 'memecoin', label: '🚀 Memecoin', points: 10 },
-    { value: 'app', label: '📱 DApp', points: 10 }
+    { 
+      value: 'contract', 
+      label: 'Smart Contract', 
+      icon: '🔐', 
+      points: 10,
+      description: 'Scan smart contracts for quantum vulnerabilities',
+      riskLevel: 'High'
+    },
+    { 
+      value: 'wallet', 
+      label: 'Wallet', 
+      icon: '💰', 
+      points: 10,
+      description: 'Analyze wallet security against quantum threats',
+      riskLevel: 'High'
+    },
+    { 
+      value: 'nft', 
+      label: 'NFT Collection', 
+      icon: '🎨', 
+      points: 10,
+      description: 'Verify NFT authenticity and quantum resistance',
+      riskLevel: 'Medium'
+    },
+    { 
+      value: 'memecoin', 
+      label: 'Token', 
+      icon: '🚀', 
+      points: 10,
+      description: 'Evaluate token security and consensus mechanisms',
+      riskLevel: 'Medium'
+    },
+    { 
+      value: 'app', 
+      label: 'DApp', 
+      icon: '📱', 
+      points: 10,
+      description: 'Comprehensive DApp security assessment',
+      riskLevel: 'High'
+    }
+  ];
+
+  const tabs = [
+    { id: 'scanner', label: 'Quantum Scanner', icon: '🔍' },
+    { id: 'analytics', label: 'Security Analytics', icon: '📊' },
+    { id: 'history', label: 'Scan History', icon: '📋' },
+    { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' }
   ];
 
   if (loading) {
     return (
       <div style={{
         display: 'flex',
+        flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)'
+        background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
+        gap: '20px'
       }}>
         <div style={{
-          width: '60px',
-          height: '60px',
+          width: '80px',
+          height: '80px',
           border: '4px solid rgba(0, 245, 255, 0.3)',
           borderTop: '4px solid #00f5ff',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
+        <div style={{
+          color: '#00f5ff',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          Loading QuantumSafe Dashboard...
+        </div>
         <style jsx>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -187,263 +278,769 @@ export default function Dashboard() {
       background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
       padding: '20px'
     }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '30px',
-          padding: '20px',
-          background: 'rgba(255, 255, 255, 0.1)',
+          padding: '25px 30px',
+          background: 'rgba(255, 255, 255, 0.08)',
           borderRadius: '20px',
-          backdropFilter: 'blur(15px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
         }}>
           <div>
             <h1 style={{
-              fontSize: '2.5rem',
+              fontSize: '2.8rem',
               background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               fontWeight: 'bold',
-              margin: 0
+              margin: 0,
+              letterSpacing: '-0.02em'
             }}>
-              🛡️ QuantumSafe Dashboard
+              🛡️ QuantumSafe
             </h1>
-            <p style={{ color: 'rgba(255, 255, 255, 0.8)', margin: '5px 0 0 0' }}>
-              Welcome back, {user?.email}
+            <p style={{ 
+              color: 'rgba(255, 255, 255, 0.8)', 
+              margin: '8px 0 0 0',
+              fontSize: '16px'
+            }}>
+              Enterprise Quantum Security Platform
             </p>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '15px',
+              marginTop: '10px'
+            }}>
+              <div style={{
+                background: 'rgba(0, 255, 136, 0.2)',
+                color: '#00ff88',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                border: '1px solid rgba(0, 255, 136, 0.3)'
+              }}>
+                ✅ ACTIVE
+              </div>
+              <div style={{
+                color: 'rgba(255, 255, 255, 0.6)',
+                fontSize: '14px'
+              }}>
+                User ID: {user?.id?.slice(0, 8)}...
+              </div>
+            </div>
           </div>
-          <button
-            onClick={signOut}
-            style={{
-              padding: '12px 24px',
-              background: 'rgba(255, 0, 0, 0.2)',
-              border: '1px solid rgba(255, 0, 0, 0.5)',
-              borderRadius: '12px',
-              color: '#ff4757',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            🚪 Sign Out
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{
+              background: 'rgba(0, 245, 255, 0.1)',
+              padding: '15px 20px',
+              borderRadius: '15px',
+              border: '1px solid rgba(0, 245, 255, 0.3)',
+              textAlign: 'center'
+            }}>
+              <div style={{ color: '#00f5ff', fontSize: '24px', fontWeight: 'bold' }}>
+                {userPoints}
+              </div>
+              <div style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '12px' }}>
+                POINTS
+              </div>
+            </div>
+            <button
+              onClick={signOut}
+              style={{
+                padding: '12px 24px',
+                background: 'rgba(255, 71, 87, 0.2)',
+                border: '1px solid rgba(255, 71, 87, 0.5)',
+                borderRadius: '12px',
+                color: '#ff4757',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 71, 87, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 71, 87, 0.2)';
+              }}
+            >
+              🚪 Sign Out
+            </button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Key Metrics Dashboard */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '20px',
           marginBottom: '30px'
         }}>
           <div style={{
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: 'rgba(255, 255, 255, 0.08)',
             borderRadius: '20px',
             padding: '25px',
-            backdropFilter: 'blur(15px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            textAlign: 'center'
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>💎</div>
-            <h3 style={{ color: '#00f5ff', margin: '0 0 10px 0' }}>Total Points</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-              {userPoints}
-            </p>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #00f5ff, #0099cc)'
+            }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '2.5rem', marginBottom: '5px' }}>🔍</div>
+                <h3 style={{ color: '#00f5ff', margin: '0 0 8px 0', fontSize: '16px' }}>
+                  Total Scans
+                </h3>
+                <p style={{ fontSize: '2.2rem', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                  {userProfile?.total_scans || 0}
+                </p>
+              </div>
+              <div style={{
+                background: 'rgba(0, 245, 255, 0.2)',
+                borderRadius: '50%',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>
+                📊
+              </div>
+            </div>
           </div>
 
           <div style={{
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: 'rgba(255, 255, 255, 0.08)',
             borderRadius: '20px',
             padding: '25px',
-            backdropFilter: 'blur(15px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            textAlign: 'center'
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔍</div>
-            <h3 style={{ color: '#00ff88', margin: '0 0 10px 0' }}>Total Scans</h3>
-            <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
-              {userProfile?.total_scans || 0}
-            </p>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #ff4757, #ff3742)'
+            }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '2.5rem', marginBottom: '5px' }}>🚨</div>
+                <h3 style={{ color: '#ff4757', margin: '0 0 8px 0', fontSize: '16px' }}>
+                  Threats Detected
+                </h3>
+                <p style={{ fontSize: '2.2rem', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                  {analytics.totalThreatsDetected}
+                </p>
+              </div>
+              <div style={{
+                background: 'rgba(255, 71, 87, 0.2)',
+                borderRadius: '50%',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>
+                ⚠️
+              </div>
+            </div>
           </div>
 
           <div style={{
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: 'rgba(255, 255, 255, 0.08)',
             borderRadius: '20px',
             padding: '25px',
-            backdropFilter: 'blur(15px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            textAlign: 'center'
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>💰</div>
-            <h3 style={{ color: '#ffa502', margin: '0 0 10px 0' }}>Wallet</h3>
-            <p style={{ 
-              fontSize: '14px', 
-              color: 'rgba(255, 255, 255, 0.8)', 
-              margin: 0,
-              fontFamily: 'monospace',
-              wordBreak: 'break-all'
-            }}>
-              {userProfile?.wallet_address ? 
-                `${userProfile.wallet_address.slice(0, 6)}...${userProfile.wallet_address.slice(-4)}` : 
-                'Not connected'
-              }
-            </p>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #2ed573, #1dd1a1)'
+            }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '2.5rem', marginBottom: '5px' }}>🛡️</div>
+                <h3 style={{ color: '#2ed573', margin: '0 0 8px 0', fontSize: '16px' }}>
+                  Assets Protected
+                </h3>
+                <p style={{ fontSize: '2.2rem', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                  {analytics.assetsProtected}
+                </p>
+              </div>
+              <div style={{
+                background: 'rgba(46, 213, 115, 0.2)',
+                borderRadius: '50%',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>
+                ✅
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '20px',
+            padding: '25px',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #ffa502, #ff9500)'
+            }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '2.5rem', marginBottom: '5px' }}>📈</div>
+                <h3 style={{ color: '#ffa502', margin: '0 0 8px 0', fontSize: '16px' }}>
+                  Risk Reduction
+                </h3>
+                <p style={{ fontSize: '2.2rem', fontWeight: 'bold', color: '#ffffff', margin: 0 }}>
+                  {analytics.riskReduction}%
+                </p>
+              </div>
+              <div style={{
+                background: 'rgba(255, 165, 2, 0.2)',
+                borderRadius: '50%',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>
+                💪
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Scanning Section */}
+        {/* Navigation Tabs */}
         <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '25px',
-          padding: '30px',
+          display: 'flex',
+          gap: '5px',
           marginBottom: '30px',
-          backdropFilter: 'blur(15px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
+          background: 'rgba(255, 255, 255, 0.05)',
+          padding: '8px',
+          borderRadius: '16px',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
-          <h2 style={{
-            color: '#00f5ff',
-            fontSize: '1.8rem',
-            marginBottom: '25px',
-            fontWeight: 'bold'
-          }}>
-            🔍 Quantum Threat Scanner
-          </h2>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '15px',
-            marginBottom: '25px'
-          }}>
-            {assetTypes.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => setSelectedAssetType(type.value)}
-                style={{
-                  padding: '15px',
-                  borderRadius: '15px',
-                  border: selectedAssetType === type.value ? 
-                    '2px solid #00f5ff' : '1px solid rgba(255, 255, 255, 0.3)',
-                  background: selectedAssetType === type.value ? 
-                    'rgba(0, 245, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  transition: 'all 0.3s ease',
-                  textAlign: 'center'
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedAssetType !== type.value) {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.2)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedAssetType !== type.value) {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-                  }
-                }}
-              >
-                <div>{type.label}</div>
-                <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '5px' }}>
-                  {type.points} points
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div style={{ marginBottom: '25px' }}>
-            <label style={{
-              display: 'block',
-              color: '#ffffff',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              marginBottom: '10px'
-            }}>
-              Enter Asset Address:
-            </label>
-            <input
-              type="text"
-              value={assetInput}
-              onChange={(e) => setAssetInput(e.target.value)}
-              placeholder={`Enter ${selectedAssetType} address (e.g., 0x1234...abcd)`}
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               style={{
-                width: '100%',
-                padding: '15px',
+                flex: 1,
+                padding: '15px 20px',
                 borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                background: 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
+                border: 'none',
+                background: activeTab === tab.id ? 
+                  'rgba(0, 245, 255, 0.2)' : 'transparent',
+                color: activeTab === tab.id ? '#00f5ff' : 'rgba(255, 255, 255, 0.7)',
+                cursor: 'pointer',
                 fontSize: '16px',
-                fontFamily: 'monospace'
+                fontWeight: 'bold',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px'
               }}
-              disabled={scanning}
-            />
-          </div>
+              onMouseEnter={(e) => {
+                if (activeTab !== tab.id) {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== tab.id) {
+                  e.target.style.background = 'transparent';
+                }
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          <button
-            onClick={handleScan}
-            disabled={scanning || !assetInput.trim() || userPoints < 10}
-            style={{
-              width: '100%',
-              padding: '18px',
-              borderRadius: '15px',
-              border: 'none',
-              background: scanning ? 
-                'rgba(0, 245, 255, 0.5)' : 
-                userPoints < 10 ? 
-                  'rgba(255, 0, 0, 0.3)' :
-                  'linear-gradient(45deg, #00f5ff, #0099cc)',
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              cursor: scanning || userPoints < 10 ? 'not-allowed' : 'pointer',
-              opacity: scanning || userPoints < 10 ? 0.7 : 1,
+        {/* Tab Content */}
+        {activeTab === 'scanner' && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '25px',
+            padding: '35px',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            marginBottom: '30px'
+          }}>
+            <div style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            {scanning ? (
-              <>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '2px solid rgba(255, 255, 255, 0.3)',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }} />
-                Scanning {selectedAssetType}...
-              </>
-            ) : userPoints < 10 ? (
-              <>❌ Insufficient Points (Need 10 points)</>
-            ) : (
-              <>🔍 Start Quantum Scan (-10 points)</>
-            )}
-          </button>
-
-          {userPoints < 10 && (
-            <div style={{
-              marginTop: '15px',
-              padding: '15px',
-              background: 'rgba(255, 165, 0, 0.1)',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 165, 0, 0.3)',
-              color: '#ffa502',
-              fontSize: '14px',
-              textAlign: 'center'
+              gap: '15px',
+              marginBottom: '30px'
             }}>
-              💡 You need more points to scan. Share your previous scans on Twitter or invite friends to earn points!
+              <div style={{
+                background: 'linear-gradient(45deg, #00f5ff, #0099cc)',
+                borderRadius: '50%',
+                width: '50px',
+                height: '50px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}>
+                🔍
+              </div>
+              <div>
+                <h2 style={{
+                  color: '#00f5ff',
+                  fontSize: '2rem',
+                  margin: 0,
+                  fontWeight: 'bold'
+                }}>
+                  Quantum Threat Scanner
+                </h2>
+                <p style={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  margin: '5px 0 0 0',
+                  fontSize: '16px'
+                }}>
+                  Advanced AI-powered quantum vulnerability detection
+                </p>
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Scan Result */}
+            {/* Asset Type Selection */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '20px',
+              marginBottom: '30px'
+            }}>
+              {assetTypes.map((type) => (
+                <div
+                  key={type.value}
+                  onClick={() => setSelectedAssetType(type.value)}
+                  style={{
+                    padding: '25px',
+                    borderRadius: '18px',
+                    border: selectedAssetType === type.value ? 
+                      '2px solid #00f5ff' : '1px solid rgba(255, 255, 255, 0.2)',
+                    background: selectedAssetType === type.value ? 
+                      'rgba(0, 245, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedAssetType !== type.value) {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+                      e.target.style.transform = 'translateY(-2px)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedAssetType !== type.value) {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                      e.target.style.transform = 'translateY(0)';
+                    }
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    marginBottom: '15px'
+                  }}>
+                    <div style={{
+                      fontSize: '2.5rem',
+                      background: selectedAssetType === type.value ? 
+                        'rgba(0, 245, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: '12px',
+                      width: '60px',
+                      height: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {type.icon}
+                    </div>
+                    <div>
+                      <h3 style={{
+                        color: '#ffffff',
+                        margin: 0,
+                        fontSize: '18px',
+                        fontWeight: 'bold'
+                      }}>
+                        {type.label}
+                      </h3>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginTop: '5px'
+                      }}>
+                        <span style={{
+                          background: type.riskLevel === 'High' ? 
+                            'rgba(255, 71, 87, 0.2)' : 'rgba(255, 165, 2, 0.2)',
+                          color: type.riskLevel === 'High' ? '#ff4757' : '#ffa502',
+                          padding: '2px 8px',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 'bold'
+                        }}>
+                          {type.riskLevel} Risk
+                        </span>
+                        <span style={{
+                          color: 'rgba(255, 255, 255, 0.6)',
+                          fontSize: '12px'
+                        }}>
+                          {type.points} points
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px',
+                    margin: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    {type.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Asset Input */}
+            <div style={{ marginBottom: '30px' }}>
+              <label style={{
+                display: 'block',
+                color: '#ffffff',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                marginBottom: '15px'
+              }}>
+                Enter {assetTypes.find(t => t.value === selectedAssetType)?.label} Address:
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={assetInput}
+                  onChange={(e) => setAssetInput(e.target.value)}
+                  placeholder={`Enter ${selectedAssetType} address (e.g., 0x1234...abcd)`}
+                  style={{
+                    width: '100%',
+                    padding: '20px 60px 20px 20px',
+                    borderRadius: '15px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    color: '#ffffff',
+                    fontSize: '16px',
+                    fontFamily: 'monospace',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.border = '1px solid #00f5ff';
+                    e.target.style.boxShadow = '0 0 20px rgba(0, 245, 255, 0.3)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                  disabled={scanning}
+                />
+                <div style={{
+                  position: 'absolute',
+                  right: '20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  fontSize: '24px'
+                }}>
+                  🔍
+                </div>
+              </div>
+            </div>
+
+            {/* Scan Button */}
+            <button
+              onClick={handleScan}
+              disabled={scanning || !assetInput.trim() || userPoints < 10}
+              style={{
+                width: '100%',
+                padding: '20px',
+                borderRadius: '15px',
+                border: 'none',
+                background: scanning ? 
+                  'rgba(0, 245, 255, 0.5)' : 
+                  userPoints < 10 ? 
+                    'rgba(255, 71, 87, 0.3)' :
+                    'linear-gradient(45deg, #00f5ff, #0099cc)',
+                color: 'white',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                cursor: scanning || userPoints < 10 ? 'not-allowed' : 'pointer',
+                opacity: scanning || userPoints < 10 ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '15px',
+                transition: 'all 0.3s ease',
+                boxShadow: scanning || userPoints < 10 ? 'none' : '0 8px 25px rgba(0, 245, 255, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                if (!scanning && userPoints >= 10) {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 12px 35px rgba(0, 245, 255, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!scanning && userPoints >= 10) {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 8px 25px rgba(0, 245, 255, 0.3)';
+                }
+              }}
+            >
+              {scanning ? (
+                <>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    border: '3px solid rgba(255, 255, 255, 0.3)',
+                    borderTop: '3px solid white',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  Scanning {assetTypes.find(t => t.value === selectedAssetType)?.label}...
+                </>
+              ) : userPoints < 10 ? (
+                <>❌ Insufficient Points (Need 10 points)</>
+              ) : (
+                <>🚀 Start Quantum Security Scan (-10 points)</>
+              )}
+            </button>
+
+            {userPoints < 10 && (
+              <div style={{
+                marginTop: '20px',
+                padding: '20px',
+                background: 'rgba(255, 165, 0, 0.1)',
+                borderRadius: '15px',
+                border: '1px solid rgba(255, 165, 0, 0.3)',
+                color: '#ffa502',
+                fontSize: '16px',
+                textAlign: 'center',
+                lineHeight: '1.6'
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: '10px' }}>💡</div>
+                <strong>Need More Points?</strong>
+                <br />
+                Share your scan results on Twitter, invite friends, or complete daily challenges to earn points!
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '25px',
+            padding: '35px',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.15)'
+          }}>
+            <h3 style={{
+              color: '#00f5ff',
+              fontSize: '1.8rem',
+              marginBottom: '25px',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '15px'
+            }}>
+              <span style={{ fontSize: '2rem' }}>📋</span>
+              Scan History & Reports
+            </h3>
+            
+            {scanResults.length > 0 ? (
+              <div style={{ display: 'grid', gap: '20px' }}>
+                {scanResults.map((scan) => (
+                  <div 
+                    key={scan.id} 
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      borderRadius: '18px',
+                      padding: '25px',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.12)';
+                      e.target.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                      e.target.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '4px',
+                      background: scan.quantum_risk === 'high' ? 
+                        'linear-gradient(90deg, #ff4757, #ff3742)' : 
+                        scan.quantum_risk === 'medium' ? 
+                          'linear-gradient(90deg, #ffa502, #ff9500)' : 
+                          'linear-gradient(90deg, #2ed573, #1dd1a1)'
+                    }} />
+                    
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '15px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '15px',
+                          marginBottom: '10px'
+                        }}>
+                          <div style={{
+                            background: 'rgba(0, 245, 255, 0.2)',
+                            borderRadius: '10px',
+                            padding: '8px 15px',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            color: '#00f5ff'
+                          }}>
+                            {scan.asset_type.charAt(0).toUpperCase() + scan.asset_type.slice(1)}
+                          </div>
+                          <div style={{
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            fontSize: '14px'
+                          }}>
+                            {new Date(scan.scanned_at).toLocaleDateString()} • {new Date(scan.scanned_at).toLocaleTimeString()}
+                          </div>
+                        </div>
+                        
+                        <div style={{
+                          color: 'rgba(255, 255, 255, 0.9)',
+                          fontSize: '16px',
+                          fontFamily: 'monospace',
+                          marginBottom: '10px',
+                          wordBreak: 'break-all',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          padding: '10px',
+                          borderRadius: '8px'
+                        }}>
+                          {scan.asset_address}
+                        </div>
+                        
+                        <div style={{
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '14px'
+                        }}>
+                          {scan.vulnerabilities?.length || 0} vulnerabilities detected
+                        </div>
+                      </div>
+                      
+                      <div style={{
+                        padding: '12px 20px',
+                        borderRadius: '25px',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        background: scan.quantum_risk === 'high' ? 
+                          'rgba(255, 71, 87, 0.2)' : 
+                          scan.quantum_risk === 'medium' ? 
+                            'rgba(255, 165, 2, 0.2)' : 
+                            'rgba(46, 213, 115, 0.2)',
+                        color: scan.quantum_risk === 'high' ? 
+                          '#ff4757' : 
+                          scan.quantum_risk === 'medium' ? 
+                            '#ffa502' : 
+                            '#2ed573',
+                        border: `1px solid ${scan.quantum_risk === 'high' ? 
+                          '#ff4757' : 
+                          scan.quantum_risk === 'medium' ? 
+                            '#ffa502' : 
+                            '#2ed573'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        {scan.quantum_risk === 'high' ? '🚨' : 
+                         scan.quantum_risk === 'medium' ? '⚠️' : '✅'} 
+                        {scan.quantum_risk.toUpperCase()} RISK
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                color: 'rgba(255, 255, 255, 0.6)'
+              }}>
+                <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🔍</div>
+                <h3 style={{ fontSize: '24px', margin: '0 0 15px 0', color: '#ffffff' }}>
+                  No Scans Yet
+                </h3>
+                <p style={{ fontSize: '16px', margin: 0, lineHeight: '1.6' }}>
+                  Start your first quantum security scan to protect your digital assets!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Scan Result Display */}
         {currentScanResult && (
           <ScanResult 
             result={currentScanResult} 
@@ -451,118 +1048,6 @@ export default function Dashboard() {
             user={user}
           />
         )}
-
-        {/* Recent Scans */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '25px',
-          padding: '30px',
-          backdropFilter: 'blur(15px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)'
-        }}>
-          <h3 style={{
-            color: '#00f5ff',
-            fontSize: '1.6rem',
-            marginBottom: '25px',
-            fontWeight: 'bold'
-          }}>
-            📊 Recent Scans
-          </h3>
-          
-          {scanResults.length > 0 ? (
-            <div style={{ display: 'grid', gap: '15px' }}>
-              {scanResults.map((scan) => (
-                <div 
-                  key={scan.id} 
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '15px',
-                    padding: '20px',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-                  }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '10px'
-                  }}>
-                    <div>
-                      <strong style={{ color: '#ffffff', fontSize: '16px' }}>
-                        {scan.asset_type.charAt(0).toUpperCase() + scan.asset_type.slice(1)}
-                      </strong>
-                      <p style={{
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        fontSize: '14px',
-                        fontFamily: 'monospace',
-                        margin: '5px 0',
-                        wordBreak: 'break-all'
-                      }}>
-                        {scan.asset_address}
-                      </p>
-                      <p style={{
-                        color: 'rgba(255, 255, 255, 0.6)',
-                        fontSize: '12px',
-                        margin: 0
-                      }}>
-                        {new Date(scan.scanned_at).toLocaleDateString()} at {new Date(scan.scanned_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                    <span style={{
-                      padding: '8px 16px',
-                      borderRadius: '20px',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      background: scan.quantum_risk === 'high' ? 
-                        'rgba(255, 71, 87, 0.2)' : 
-                        scan.quantum_risk === 'medium' ? 
-                          'rgba(255, 165, 2, 0.2)' : 
-                          'rgba(46, 213, 115, 0.2)',
-                      color: scan.quantum_risk === 'high' ? 
-                        '#ff4757' : 
-                        scan.quantum_risk === 'medium' ? 
-                          '#ffa502' : 
-                          '#2ed573',
-                      border: `1px solid ${scan.quantum_risk === 'high' ? 
-                        '#ff4757' : 
-                        scan.quantum_risk === 'medium' ? 
-                          '#ffa502' : 
-                          '#2ed573'}`
-                    }}>
-                      {scan.quantum_risk === 'high' ? '🚨' : 
-                       scan.quantum_risk === 'medium' ? '⚠️' : '✅'} {scan.quantum_risk.toUpperCase()} RISK
-                    </span>
-                  </div>
-                  <div style={{
-                    fontSize: '14px',
-                    color: 'rgba(255, 255, 255, 0.7)'
-                  }}>
-                    {scan.vulnerabilities?.length || 0} vulnerabilities found
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{
-              textAlign: 'center',
-              padding: '40px',
-              color: 'rgba(255, 255, 255, 0.6)'
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🔍</div>
-              <p style={{ fontSize: '18px', margin: 0 }}>No scans yet</p>
-              <p style={{ fontSize: '14px', margin: '10px 0 0 0' }}>
-                Start your first quantum threat scan above!
-              </p>
-            </div>
-          )}
-        </div>
       </div>
 
       <style jsx>{`
