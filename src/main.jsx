@@ -1,9 +1,9 @@
-الاستيراد  .رد...................... فعل. فعل. من...... 'react'
-الاستيراد.. رد فعل رد......................................................... . فعل DOMمن ... " 
-الاستيراد  .التطبيق.. التطبيق './App'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
 
-رد............................................... ...فعل DOM....إنشاء الجذر الجذر.وثيقة.....وثيقة. على ElementById..)....)............"الجذر"
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
-  <رد.....
+  </React.StrictMode>
 )
