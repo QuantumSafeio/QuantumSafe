@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
-// Arabic terms to search for
-const arabicTerms = [
-  'خدمة', 'تكوين', 'أسعار', 'أنواع', 'حساب', 
-  'بدء', 'عملية', 'التحقق', 'معالجة', 'الحصول', 
-  'فحص', 'دوال', 'مساعدة'
+// English terms to search for (previously Arabic)
+const searchTerms = [
+  'service', 'configuration', 'prices', 'types', 'account', 
+  'start', 'process', 'verification', 'processing', 'getting', 
+  'scan', 'functions', 'help'
 ];
 
 function searchInFile(filePath, terms) {
@@ -52,17 +52,17 @@ function findFiles(dir, extensions) {
 // Find all .md and .txt files
 const files = findFiles('.', ['.md', '.txt']);
 
-// Search for Arabic terms in each file
-const matchingFiles = files.filter(file => searchInFile(file, arabicTerms));
+// Search for English terms in each file
+const matchingFiles = files.filter(file => searchInFile(file, searchTerms));
 
 // Display results (limit to 10 as in original command)
 const results = matchingFiles.slice(0, 10);
 
 if (results.length > 0) {
-  console.log('Files containing Arabic terms:');
+  console.log('Files containing English terms:');
   results.forEach(file => console.log(file));
 } else {
-  console.log('No files found containing the specified Arabic terms.');
+  console.log('No files found containing the specified English terms.');
 }
 
 console.log(`\nSearched ${files.length} files total.`);
