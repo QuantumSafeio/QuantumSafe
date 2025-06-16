@@ -117,6 +117,10 @@ export default function Login() {
     }
   };
 
+  const isMetaMaskInstalled = () => {
+    return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -158,28 +162,63 @@ export default function Login() {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <button
-            onClick={handleWalletLogin}
-            disabled={loading}
-            style={{
+          {!isMetaMaskInstalled() ? (
+            <div style={{
               width: '100%',
               padding: '15px',
-              border: 'none',
               borderRadius: '12px',
-              background: 'linear-gradient(45deg, #f6851b, #e76f00)',
-              color: 'white',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px'
-            }}
-          >
-            🦊 Connect MetaMask Wallet
-          </button>
+              background: 'rgba(255, 165, 0, 0.1)',
+              border: '1px solid rgba(255, 165, 0, 0.3)',
+              textAlign: 'center'
+            }}>
+              <p style={{ color: '#ffa500', marginBottom: '10px', fontSize: '14px' }}>
+                🦊 MetaMask Required
+              </p>
+              <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '12px', marginBottom: '15px' }}>
+                Please install MetaMask to connect your wallet
+              </p>
+              <a
+                href="https://metamask.io/download/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  padding: '10px 20px',
+                  background: 'linear-gradient(45deg, #f6851b, #e76f00)',
+                  color: 'white',
+                  textDecoration: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Install MetaMask
+              </a>
+            </div>
+          ) : (
+            <button
+              onClick={handleWalletLogin}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '15px',
+                border: 'none',
+                borderRadius: '12px',
+                background: 'linear-gradient(45deg, #f6851b, #e76f00)',
+                color: 'white',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px'
+              }}
+            >
+              🦊 Connect MetaMask Wallet
+            </button>
+          )}
 
           <div style={{
             textAlign: 'center',
@@ -242,6 +281,21 @@ export default function Login() {
             fontSize: '14px'
           }}>
             {error}
+            {error.includes('MetaMask') && (
+              <div style={{ marginTop: '10px' }}>
+                <a
+                  href="https://metamask.io/download/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#00f5ff',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Download MetaMask here
+                </a>
+              </div>
+            )}
           </div>
         )}
 
