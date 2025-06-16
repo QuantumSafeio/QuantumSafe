@@ -1,19 +1,19 @@
 /*
-  # Create payments table for Web3 transactions
+  # Fix payments table migration
 
   1. New Tables
     - `payments`
       - `id` (uuid, primary key)
       - `user_id` (uuid, foreign key to users)
-      - `network` (text, blockchain network)
-      - `transaction_hash` (text, blockchain transaction hash)
-      - `from_address` (text, sender address)
-      - `to_address` (text, recipient address)
-      - `amount` (numeric, payment amount)
-      - `currency` (text, payment currency)
-      - `status` (text, payment status)
-      - `service_type` (text, type of service purchased)
-      - `verified_at` (timestamptz, verification timestamp)
+      - `network` (text)
+      - `transaction_hash` (text, nullable)
+      - `from_address` (text)
+      - `to_address` (text)
+      - `amount` (numeric)
+      - `currency` (text)
+      - `status` (text with constraints)
+      - `service_type` (text)
+      - `verified_at` (timestamptz, nullable)
       - `created_at` (timestamptz)
       - `updated_at` (timestamptz)
 
@@ -21,15 +21,22 @@
     - Enable RLS on `payments` table
     - Add policies for authenticated users to manage their own payments
 
-  3. Indexes
-    - Add indexes for performance optimization
-    - Unique index on transaction_hash (where not null)
-
-  4. Triggers
-    - Auto-update updated_at timestamp
+  3. Performance
+    - Add indexes for common queries
+    - Add unique constraint on transaction_hash
+    - Add trigger for auto-updating updated_at
 */
 
--- Create payments table
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can insert own payments" ON payments;
+DROP POLICY IF EXISTS "Users can read own payments" ON payments;
+DROP POLICY IF EXISTS "Users can update own payments" ON payments;
+
+-- Drop existing trigger and function if they exist
+DROP TRIGGER IF EXISTS trigger_update_payments_updated_at ON payments;
+DROP FUNCTION IF EXISTS update_payments_updated_at();
+
+-- Create payments table if it doesn't exist
 CREATE TABLE IF NOT EXISTS payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -43,18 +50,51 @@ CREATE TABLE IF NOT EXISTS payments (
   service_type text NOT NULL,
   verified_at timestamptz,
   created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  
-  -- Constraints
-  CONSTRAINT fk_payments_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT check_payments_amount_positive CHECK (amount > 0),
-  CONSTRAINT check_payments_status CHECK (status IN ('pending', 'submitted', 'confirmed', 'failed', 'verification_failed'))
+  updated_at timestamptz DEFAULT now()
 );
+
+-- Add foreign key constraint if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_payments_user_id' 
+    AND table_name = 'payments'
+  ) THEN
+    ALTER TABLE payments ADD CONSTRAINT fk_payments_user_id 
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- Add check constraints if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'check_payments_amount_positive' 
+    AND table_name = 'payments'
+  ) THEN
+    ALTER TABLE payments ADD CONSTRAINT check_payments_amount_positive 
+      CHECK (amount > 0);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'check_payments_status' 
+    AND table_name = 'payments'
+  ) THEN
+    ALTER TABLE payments ADD CONSTRAINT check_payments_status 
+      CHECK (status IN ('pending', 'submitted', 'confirmed', 'failed', 'verification_failed'));
+  END IF;
+END $$;
 
 -- Enable RLS
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
--- Create RLS policies
+-- Create RLS policies (fresh creation after dropping)
 CREATE POLICY "Users can insert own payments"
   ON payments
   FOR INSERT
