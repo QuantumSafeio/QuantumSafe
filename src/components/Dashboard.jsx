@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { scanAsset } from '../services/scanner';
 import ScanResult from './ScanResult';
+import PromoTweets from './PromoTweets';
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -233,7 +234,8 @@ export default function Dashboard() {
     { id: 'scanner', label: 'Quantum Scanner', icon: '🔍' },
     { id: 'analytics', label: 'Security Analytics', icon: '📊' },
     { id: 'history', label: 'Scan History', icon: '📋' },
-    { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' }
+    { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' },
+    { id: 'marketing', label: 'Marketing & Promotion', icon: '🚀' }
   ];
 
   if (loading) {
@@ -1039,6 +1041,8 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
+        {activeTab === 'marketing' && <PromoTweets />}
 
         {/* Scan Result Display */}
         {currentScanResult && (
