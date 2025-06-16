@@ -11,7 +11,7 @@ function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner message="Loading..." />;
+    return <LoadingSpinner message="Checking authentication..." />;
   }
   
   return user ? children : <Navigate to="/login" replace />;
@@ -22,7 +22,7 @@ function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner message="Checking authentication..." />;
+    return <LoadingSpinner message="Loading application..." />;
   }
   
   return user ? <Navigate to="/" replace /> : children;

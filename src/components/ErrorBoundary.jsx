@@ -3,7 +3,7 @@ import React from 'react';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -12,6 +12,7 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('Application Error:', error, errorInfo);
+    this.setState({ errorInfo });
   }
 
   render() {
@@ -39,7 +40,7 @@ class ErrorBoundary extends React.Component {
               fontSize: '2rem',
               marginBottom: '20px'
             }}>
-              ⚠️ Unexpected Error
+              ⚠️ Application Error
             </h1>
             <p style={{
               color: '#ffffff',
@@ -47,8 +48,28 @@ class ErrorBoundary extends React.Component {
               marginBottom: '20px',
               lineHeight: '1.6'
             }}>
-              Sorry, an error occurred in the application. Please reload the page or try again later.
+              Something went wrong. Please try refreshing the page.
             </p>
+            <details style={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '12px',
+              marginBottom: '20px',
+              textAlign: 'left'
+            }}>
+              <summary style={{ cursor: 'pointer', marginBottom: '10px' }}>
+                Error Details
+              </summary>
+              <pre style={{
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '10px',
+                borderRadius: '5px',
+                overflow: 'auto',
+                maxHeight: '200px'
+              }}>
+                {this.state.error && this.state.error.toString()}
+                {this.state.errorInfo && this.state.errorInfo.componentStack}
+              </pre>
+            </details>
             <button
               onClick={() => window.location.reload()}
               style={{

@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [userPoints, setUserPoints] = useState(0);
   const [scanResults, setScanResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   
   // Scanning state
   const [scanning, setScanning] = useState(false);
@@ -35,72 +36,78 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       fetchUserData();
-      calculateAnalytics();
     }
   }, [user]);
 
   const fetchUserData = async () => {
     try {
       setLoading(true);
+      setError('');
       
-      // Fetch user profile
-      const { data: profile } = await supabase
+      // Add timeout to prevent infinite loading
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+
+      // Fetch user profile with timeout
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.id)
         .single();
-      
+
+      const { data: profile } = await Promise.race([profilePromise, timeout]);
       setUserProfile(profile);
 
-      // Fetch user points
-      const { data: points } = await supabase
+      // Fetch user points with timeout
+      const pointsPromise = supabase
         .from('user_points')
         .select('points')
         .eq('user_id', user.id)
         .single();
-      
+
+      const { data: points } = await Promise.race([pointsPromise, timeout]);
       setUserPoints(points?.points || 0);
 
-      // Fetch recent scan results
-      const { data: scans } = await supabase
+      // Fetch recent scan results with timeout
+      const scansPromise = supabase
         .from('scan_results')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10);
-      
+
+      const { data: scans } = await Promise.race([scansPromise, timeout]);
       setScanResults(scans || []);
+
+      // Calculate analytics
+      await calculateAnalytics(scans || []);
+      
     } catch (error) {
       console.error('Error fetching user data:', error);
+      setError('Failed to load user data. Please refresh the page.');
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateAnalytics = async () => {
+  const calculateAnalytics = async (scans) => {
     try {
-      const { data: scans } = await supabase
-        .from('scan_results')
-        .select('*')
-        .eq('user_id', user.id);
+      const totalThreats = scans.reduce((sum, scan) => 
+        sum + (scan.vulnerabilities?.length || 0), 0);
+      
+      const criticalVulns = scans.filter(scan => 
+        scan.quantum_risk === 'high').length;
+      
+      const assetsProtected = scans.length;
+      const riskReduction = Math.min(assetsProtected * 15, 95);
 
-      if (scans) {
-        const totalThreats = scans.reduce((sum, scan) => 
-          sum + (scan.vulnerabilities?.length || 0), 0);
-        
-        const criticalVulns = scans.filter(scan => 
-          scan.quantum_risk === 'high').length;
-        
-        const assetsProtected = scans.length;
-        const riskReduction = Math.min(assetsProtected * 15, 95);
-
-        setAnalytics({
-          totalThreatsDetected: totalThreats,
-          criticalVulnerabilities: criticalVulns,
-          assetsProtected,
-          riskReduction
-        });
-      }
+      setAnalytics({
+        totalThreatsDetected: totalThreats,
+        criticalVulnerabilities: criticalVulns,
+        assetsProtected,
+        riskReduction
+      });
     } catch (error) {
       console.error('Error calculating analytics:', error);
     }
@@ -119,10 +126,16 @@ export default function Dashboard() {
 
     setScanning(true);
     setCurrentScanResult(null);
+    setError('');
 
     try {
-      // Perform the scan
-      const result = await scanAsset(selectedAssetType, assetInput.trim());
+      // Perform the scan with timeout
+      const scanTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Scan timeout')), 30000)
+      );
+
+      const scanPromise = scanAsset(selectedAssetType, assetInput.trim());
+      const result = await Promise.race([scanPromise, scanTimeout]);
       
       // Save scan result to database
       const { data: scanData, error: scanError } = await supabase
@@ -182,11 +195,10 @@ export default function Dashboard() {
 
       // Refresh data
       fetchUserData();
-      calculateAnalytics();
       
     } catch (error) {
       console.error('Scan error:', error);
-      alert('Failed to perform scan. Please try again.');
+      setError('Failed to perform scan. Please try again.');
     } finally {
       setScanning(false);
     }
@@ -286,6 +298,60 @@ export default function Dashboard() {
             100% { transform: rotate(360deg); }
           }
         `}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
+        padding: '20px',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          background: 'rgba(255, 0, 0, 0.1)',
+          border: '2px solid rgba(255, 0, 0, 0.3)',
+          borderRadius: '15px',
+          padding: '30px',
+          maxWidth: '500px'
+        }}>
+          <h1 style={{
+            color: '#ff4757',
+            fontSize: '2rem',
+            marginBottom: '20px'
+          }}>
+            ⚠️ Loading Error
+          </h1>
+          <p style={{
+            color: '#ffffff',
+            fontSize: '16px',
+            marginBottom: '20px',
+            lineHeight: '1.6'
+          }}>
+            {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
+              border: 'none',
+              borderRadius: '10px',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Reload Page
+          </button>
+        </div>
       </div>
     );
   }
