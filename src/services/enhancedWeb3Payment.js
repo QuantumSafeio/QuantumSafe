@@ -1,8 +1,8 @@
-// خدمة الدفع المحسنة متعددة الشبكات
+// Enhanced multi-chain Web3 payment service
 import { multiChainWallet, SUPPORTED_NETWORKS } from './multiChainWallet';
 import { supabase } from '../lib/supabase';
 
-// أسعار العملات المشفرة (يجب جلبها من API حقيقي)
+// Cryptocurrency prices (should be fetched from real API)
 const CRYPTO_PRICES = {
   ETH: 2000,
   MATIC: 0.8,
@@ -12,7 +12,7 @@ const CRYPTO_PRICES = {
   SUI: 1.5
 };
 
-// أنواع الخدمات وتكاليفها
+// Service types and their costs
 export const ENHANCED_SERVICE_TYPES = {
   contract_scan: { 
     name: "Smart Contract Security Scan", 
@@ -57,7 +57,7 @@ class EnhancedWeb3PaymentService {
     this.supportedNetworks = SUPPORTED_NETWORKS;
   }
 
-  // حساب مبلغ الدفع بالعملة المشفرة
+  // Calculate payment amount in cryptocurrency
   calculateCryptoAmount(serviceType, networkKey) {
     const service = ENHANCED_SERVICE_TYPES[serviceType];
     const network = SUPPORTED_NETWORKS[networkKey];
@@ -83,10 +83,10 @@ class EnhancedWeb3PaymentService {
     };
   }
 
-  // بدء عملية الدفع
+  // Initiate payment process
   async initiatePayment(serviceType, networkKey, userId) {
     try {
-      // التحقق من صحة البيانات
+      // Validate input data
       const service = ENHANCED_SERVICE_TYPES[serviceType];
       const network = SUPPORTED_NETWORKS[networkKey];
       
@@ -94,19 +94,19 @@ class EnhancedWeb3PaymentService {
         throw new Error('Invalid service or network selection');
       }
 
-      // حساب المبلغ
+      // Calculate payment amount
       const paymentDetails = this.calculateCryptoAmount(serviceType, networkKey);
       
-      // الاتصال بالمحفظة
+      // Connect to wallet
       const walletConnection = await multiChainWallet.connectWallet(networkKey);
       
-      // التحقق من الرصيد
+      // Check balance
       const balance = await multiChainWallet.getBalance(networkKey);
       if (parseFloat(balance) < paymentDetails.amountCrypto) {
         throw new Error(`Insufficient balance. Required: ${paymentDetails.amountCrypto} ${network.symbol}, Available: ${balance} ${network.symbol}`);
       }
 
-      // إنشاء سجل الدفع في قاعدة البيانات
+      // Create payment record in database
       const { data: payment, error } = await supabase
         .from('payments')
         .insert({
@@ -124,14 +124,14 @@ class EnhancedWeb3PaymentService {
 
       if (error) throw error;
 
-      // إرسال المعاملة
+      // Send transaction
       const transactionResult = await multiChainWallet.sendPayment(
         networkKey,
         paymentDetails.amountCrypto,
         network.address
       );
 
-      // تحديث سجل الدفع بمعرف المعاملة
+      // Update payment record with transaction hash
       await supabase
         .from('payments')
         .update({ 
@@ -140,7 +140,7 @@ class EnhancedWeb3PaymentService {
         })
         .eq('id', payment.id);
 
-      // بدء عملية التحقق
+      // Start verification process
       this.startVerificationProcess(transactionResult.hash, payment.id, networkKey);
 
       return {
@@ -157,9 +157,9 @@ class EnhancedWeb3PaymentService {
     }
   }
 
-  // عملية التحقق من المعاملة
+  // Transaction verification process
   async startVerificationProcess(txHash, paymentId, networkKey) {
-    // تأخير قبل بدء التحقق
+    // Delay before starting verification
     setTimeout(async () => {
       try {
         const isConfirmed = await this.verifyTransaction(txHash, networkKey);
@@ -173,7 +173,7 @@ class EnhancedWeb3PaymentService {
             })
             .eq('id', paymentId);
 
-          // معالجة الدفع الناجح
+          // Process successful payment
           await this.processSuccessfulPayment(paymentId);
         } else {
           await supabase
@@ -188,35 +188,35 @@ class EnhancedWeb3PaymentService {
           .update({ status: 'verification_failed' })
           .eq('id', paymentId);
       }
-    }, 30000); // انتظار 30 ثانية قبل التحقق
+    }, 30000); // Wait 30 seconds before verification
   }
 
-  // التحقق من المعاملة على البلوك تشين
+  // Verify transaction on blockchain
   async verifyTransaction(txHash, networkKey) {
     try {
       const network = SUPPORTED_NETWORKS[networkKey];
       
       switch (network.walletType) {
         case 'metamask':
-          // التحقق من معاملات Ethereum/Polygon/BSC
+          // Verify Ethereum/Polygon/BSC transactions
           const provider = new ethers.JsonRpcProvider(network.rpcUrl);
           const receipt = await provider.getTransactionReceipt(txHash);
           return receipt && receipt.status === 1;
         
         case 'phantom':
-          // التحقق من معاملات Solana
-          // في التطبيق الحقيقي، استخدم Solana Web3.js
-          return true; // محاكاة النجاح
+          // Verify Solana transactions
+          // In real application, use Solana Web3.js
+          return true; // Simulate success
         
         case 'unisat':
-          // التحقق من معاملات Bitcoin
-          // في التطبيق الحقيقي، استخدم Bitcoin API
-          return true; // محاكاة النجاح
+          // Verify Bitcoin transactions
+          // In real application, use Bitcoin API
+          return true; // Simulate success
         
         case 'sui':
-          // التحقق من معاملات SUI
-          // في التطبيق الحقيقي، استخدم SUI SDK
-          return true; // محاكاة النجاح
+          // Verify SUI transactions
+          // In real application, use SUI SDK
+          return true; // Simulate success
         
         default:
           return false;
@@ -227,7 +227,7 @@ class EnhancedWeb3PaymentService {
     }
   }
 
-  // معالجة الدفع الناجح
+  // Process successful payment
   async processSuccessfulPayment(paymentId) {
     try {
       const { data: payment } = await supabase
@@ -240,10 +240,10 @@ class EnhancedWeb3PaymentService {
 
       const service = ENHANCED_SERVICE_TYPES[payment.service_type];
       
-      // منح نقاط أو اعتمادات المسح
-      const scanCredits = Math.floor(service.cost / 100); // 1 نقطة لكل $100
+      // Award points or scan credits
+      const scanCredits = Math.floor(service.cost / 100); // 1 point per $100
       
-      // تحديث نقاط المستخدم
+      // Update user points
       const { data: currentPoints } = await supabase
         .from('user_points')
         .select('points')
@@ -260,7 +260,7 @@ class EnhancedWeb3PaymentService {
           updated_at: new Date().toISOString()
         });
 
-      // تسجيل معاملة النقاط
+      // Record points transaction
       await supabase
         .from('points_transactions')
         .insert({
@@ -284,7 +284,7 @@ class EnhancedWeb3PaymentService {
     }
   }
 
-  // الحصول على تاريخ المدفوعات
+  // Get payment history
   async getUserPayments(userId) {
     const { data: payments, error } = await supabase
       .from('payments')
@@ -296,7 +296,7 @@ class EnhancedWeb3PaymentService {
     return payments;
   }
 
-  // فحص حالة الدفع
+  // Check payment status
   async checkPaymentStatus(paymentId) {
     const { data: payment, error } = await supabase
       .from('payments')
@@ -308,17 +308,17 @@ class EnhancedWeb3PaymentService {
     return payment;
   }
 
-  // الحصول على المحافظ المتاحة
+  // Get available wallets
   async getAvailableWallets() {
     return await multiChainWallet.checkAvailableWallets();
   }
 
-  // الحصول على معلومات الشبكة
+  // Get network information
   getNetworkInfo(networkKey) {
     return SUPPORTED_NETWORKS[networkKey];
   }
 
-  // الحصول على معلومات الخدمة
+  // Get service information
   getServiceInfo(serviceType) {
     return ENHANCED_SERVICE_TYPES[serviceType];
   }
@@ -326,7 +326,7 @@ class EnhancedWeb3PaymentService {
 
 export const enhancedWeb3Payment = new EnhancedWeb3PaymentService();
 
-// دوال مساعدة
+// Helper functions
 export function formatCryptoAmount(amount, currency) {
   const decimals = currency === 'BTC' ? 8 : currency === 'ETH' ? 6 : 4;
   return parseFloat(amount).toFixed(decimals);

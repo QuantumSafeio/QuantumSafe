@@ -1,7 +1,7 @@
-// خدمة المحافظ متعددة الشبكات
+// Multi-chain wallet service
 import { ethers } from 'ethers';
 
-// تكوين الشبكات المدعومة
+// Supported network configurations
 export const SUPPORTED_NETWORKS = {
   ethereum: {
     name: "Ethereum",
@@ -67,7 +67,7 @@ class MultiChainWalletService {
     this.currentNetwork = null;
   }
 
-  // فحص المحافظ المتاحة
+  // Check available wallets
   async checkAvailableWallets() {
     const available = {
       metamask: typeof window.ethereum !== 'undefined',
@@ -79,7 +79,7 @@ class MultiChainWalletService {
     return available;
   }
 
-  // الاتصال بمحفظة MetaMask (Ethereum, Polygon, BSC)
+  // Connect to MetaMask wallet (Ethereum, Polygon, BSC)
   async connectMetaMask(networkKey) {
     if (!window.ethereum) {
       throw new Error('MetaMask is not installed. Please install MetaMask to continue.');
@@ -91,13 +91,13 @@ class MultiChainWalletService {
         throw new Error('Invalid network for MetaMask');
       }
 
-      // طلب الاتصال
+      // Request connection
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       
-      // تبديل الشبكة إذا لزم الأمر
+      // Switch network if needed
       await this.switchMetaMaskNetwork(network);
       
-      // إنشاء المزود والموقع
+      // Create provider and signer
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
@@ -120,7 +120,7 @@ class MultiChainWalletService {
     }
   }
 
-  // تبديل شبكة MetaMask
+  // Switch MetaMask network
   async switchMetaMaskNetwork(network) {
     try {
       await window.ethereum.request({
@@ -128,7 +128,7 @@ class MultiChainWalletService {
         params: [{ chainId: `0x${network.chainId.toString(16)}` }],
       });
     } catch (switchError) {
-      // إذا لم تكن الشبكة موجودة، أضفها
+      // If network doesn't exist, add it
       if (switchError.code === 4902) {
         await window.ethereum.request({
           method: 'wallet_addEthereumChain',
@@ -150,7 +150,7 @@ class MultiChainWalletService {
     }
   }
 
-  // الاتصال بمحفظة Phantom (Solana)
+  // Connect to Phantom wallet (Solana)
   async connectPhantom() {
     if (!window.solana || !window.solana.isPhantom) {
       throw new Error('Phantom wallet is not installed. Please install Phantom wallet.');
@@ -177,7 +177,7 @@ class MultiChainWalletService {
     }
   }
 
-  // الاتصال بمحفظة UniSat (Bitcoin)
+  // Connect to UniSat wallet (Bitcoin)
   async connectUniSat() {
     if (!window.unisat) {
       throw new Error('UniSat wallet is not installed. Please install UniSat wallet.');
@@ -203,7 +203,7 @@ class MultiChainWalletService {
     }
   }
 
-  // الاتصال بمحفظة SUI
+  // Connect to SUI wallet
   async connectSuiWallet() {
     if (!window.suiWallet) {
       throw new Error('SUI wallet is not installed. Please install SUI wallet.');
@@ -229,7 +229,7 @@ class MultiChainWalletService {
     }
   }
 
-  // الاتصال التلقائي بالمحفظة المناسبة
+  // Auto-connect to appropriate wallet
   async connectWallet(networkKey) {
     const network = SUPPORTED_NETWORKS[networkKey];
     if (!network) {
@@ -250,7 +250,7 @@ class MultiChainWalletService {
     }
   }
 
-  // إرسال دفعة Ethereum/Polygon/BSC
+  // Send Ethereum/Polygon/BSC payment
   async sendEthereumPayment(networkKey, amount, toAddress) {
     const wallet = this.connectedWallets[networkKey];
     if (!wallet || !wallet.signer) {
@@ -275,14 +275,14 @@ class MultiChainWalletService {
     }
   }
 
-  // إرسال دفعة Solana
+  // Send Solana payment
   async sendSolanaPayment(amount, toAddress) {
     if (!window.solana || !this.connectedWallets.solana) {
       throw new Error('Phantom wallet not connected');
     }
 
     try {
-      // تحويل SOL إلى lamports (1 SOL = 1,000,000,000 lamports)
+      // Convert SOL to lamports (1 SOL = 1,000,000,000 lamports)
       const lamports = Math.floor(amount * 1000000000);
       
       const transaction = new window.solanaWeb3.Transaction().add(
@@ -306,14 +306,14 @@ class MultiChainWalletService {
     }
   }
 
-  // إرسال دفعة Bitcoin
+  // Send Bitcoin payment
   async sendBitcoinPayment(amount, toAddress) {
     if (!window.unisat || !this.connectedWallets.bitcoin) {
       throw new Error('UniSat wallet not connected');
     }
 
     try {
-      // تحويل BTC إلى satoshis (1 BTC = 100,000,000 satoshis)
+      // Convert BTC to satoshis (1 BTC = 100,000,000 satoshis)
       const satoshis = Math.floor(amount * 100000000);
       
       const txid = await window.unisat.sendBitcoin(toAddress, satoshis);
@@ -329,14 +329,14 @@ class MultiChainWalletService {
     }
   }
 
-  // إرسال دفعة SUI
+  // Send SUI payment
   async sendSuiPayment(amount, toAddress) {
     if (!window.suiWallet || !this.connectedWallets.sui) {
       throw new Error('SUI wallet not connected');
     }
 
     try {
-      // تحويل SUI إلى MIST (1 SUI = 1,000,000,000 MIST)
+      // Convert SUI to MIST (1 SUI = 1,000,000,000 MIST)
       const mist = Math.floor(amount * 1000000000);
       
       const transaction = {
@@ -363,7 +363,7 @@ class MultiChainWalletService {
     }
   }
 
-  // إرسال دفعة عامة
+  // Send payment (general method)
   async sendPayment(networkKey, amount, toAddress) {
     const network = SUPPORTED_NETWORKS[networkKey];
     if (!network) {
@@ -384,7 +384,7 @@ class MultiChainWalletService {
     }
   }
 
-  // الحصول على رصيد المحفظة
+  // Get wallet balance
   async getBalance(networkKey) {
     const wallet = this.connectedWallets[networkKey];
     if (!wallet) {
@@ -420,14 +420,14 @@ class MultiChainWalletService {
     }
   }
 
-  // قطع الاتصال
+  // Disconnect wallet
   async disconnect(networkKey) {
     if (this.connectedWallets[networkKey]) {
       delete this.connectedWallets[networkKey];
     }
   }
 
-  // قطع الاتصال من جميع المحافظ
+  // Disconnect all wallets
   async disconnectAll() {
     this.connectedWallets = {};
     this.currentNetwork = null;
