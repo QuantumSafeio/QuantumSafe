@@ -1,56 +1,56 @@
-الاستيراد  .رد.............................. فعل. فعل. من...... 'react';
-الاستيراد  .{ متصفح روتر روتر, {روتر, الطرق., التنقل.. } من... .الطرق;
-الاستيراد.. {      استخدامhooks/useAuth'; اليوت     
-الاستيراد/المكونات/التسجيلات'. تسجيل الدخول. الدخول.  المكونات   '/المكونات/التسجيلات'التسجيلات
-'  .لوحة القيادة من ' ;من... ... '/المكونات/لوحة القيادة';
-'; تحميل  الدوار  من  المكونات;
-الاستيراد  .خطأ الحدود الحدود من ' ;from './components/ErrorBoundary';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import LoadingSpinner from './components/LoadingSpinner';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// مكون الطريق المحمي للصفحات الموثقة
-وظيفة  .PrivateRoute({ الطريقالخاص  }) (.
-   كونست   كونست  كونست { المستخدم.المستخدم.userالمستخدم. { التحميل.... = استخدام اليوتاستخدام اليوتuseAuth();
+// Protected route component for authenticated pages
+function PrivateRoute({ children }) {
+  const { user, loading } = useAuth();
   
-  إذا...... (التحميل..) ..
-    العودة.. <تحميل تحميل الدوار  messageتحميل  رسالة  رسالة.>;
- } 
+  if (loading) {
+    return <LoadingSpinner message="Loading..." />;
+  }
   
- عودة المستخدم؟ الأطفال: عودة المستخدم؟ الأطفال: <    .المستخدم؟ الأطفال. العودة.Navigate to="/login"     < />;
+  return user ? children : <Navigate to="/login" replace />;
 }
 
-// عنصر الطريق العام لإعادة توجيه المستخدمين المصادق عليهم
-وظيفة PublicRoute (وظيفةدالة.الأطفال) }) {
-  كونست  .{ المستخدم.., المستخدم  .المستخدم = useAuth();
+// Public route component to redirect authenticated users
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth();
   
-  إذا (تحميل) .  
- العودة.. العودةتحميلSpinner العودة = "التحقق من بيانات اعتماد المستخدم"... />;
- } 
+  if (loading) {
+    return <LoadingSpinner message="Checking user credentials..." />;
+  }
   
- عودة المستخدم؟ <Navigate إلى...="/"استبدال />: الأطفال؛
+  return user ? <Navigate to="/" replace /> : children;
 }
 
-// مكون التطبيق الرئيسي
-تصدير الدالة الافتراضية التطبيق () {
- العودة ( العودة ( 
-    <خطأ الحدود الحدود>
-      <متصفح روتر روتر اسم القاعدة. القاعدة.="/QuantumSafe">
+// Main App component
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <BrowserRouter basename="/QuantumSafe">
         <div style={{ 
-          minالارتفاع: '100vh', 
-          خلفية  اللون اللون: '#0a0a0a',
- اللون..: '#ffffff', اللون: '#ffffff',اللون..: '#ffffff', 
- fontFamily: 'القاهرة، - نظام التفاح، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif' fontFamily: 'Cairo، -apple-system، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif'fontFamily: 'القاهرة، - نظام التفاح، BlinkMacSystemFont، "Segoe UI"، Roboto، sans-serif' 
- }}> 
+          minHeight: '100vh', 
+          backgroundColor: '#0a0a0a',
+          color: '#ffffff', 
+          fontFamily: 'Cairo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' 
+        }}>
           <Routes>
-            {/* صفحة تسجيل الدخول */}
+            {/* Login page */}
             <Route 
-              المسار....="/تسجيل الدخول"  
- عنصر = {
+              path="/login" 
+              element={
                 <PublicRoute>
                   <Login />
                 </PublicRoute>
               } 
             />
             
-            {/* لوحة القيادة المحمية */}
+            {/* Protected dashboard */}
             <Route 
               path="/" 
               element={
@@ -60,11 +60,11 @@
               } 
             />
             
-            {/* إعادة توجيه جميع الطرق الأخرى إلى المنزل */}
+            {/* Redirect all other routes to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
-      <///
- < </
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
