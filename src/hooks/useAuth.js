@@ -45,12 +45,12 @@ export function useAuth() {
             .single();
           
           if (!existingPoints) {
-            // Create user points record if it doesn't exist
+            // Create user points record if it doesn't exist (5 points for new users)
             await supabase
               .from('user_points')
               .insert({
                 user_id: session.user.id,
-                points: 50, // Initial points for new users
+                points: 5,
                 created_at: new Date().toISOString()
               });
           }
