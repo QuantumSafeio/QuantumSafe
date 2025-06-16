@@ -1,18 +1,65 @@
 <!DOCTYPE html>
-<HTML. lang="إن" dir="الضرر">
+<html lang="ar" dir="rtl">
   <head>
-    <meta شارست.="UTF-8" />
-    <meta name="viewport" content="العرض = عرض الجهاز، النطاق الأولي = 1.0" />
-    <العنوان.>الكم الآمن</title>
-    <meta name="description" content=الكم الآمن: الآمن: الآمن: مسح وحماية الأصول الرقمية الخاصة بك ضد التهديدات الكمومية. اكسب النقاط، وشارك النتائج، ودعوة الأصدقاء!     " مسح وحماية الأصول الرقمية الخاصة بك ضد التهديدات الكمومية. اكسب النقاط، وشارك النتائج، ودعوة الأصدقاء!   " مسح وحماية الأصول الرقمية الخاصة بك ضد التهديدات الكمومية. اكسب النقاط، وشارك النتائج، ودعوة الأصدقاء! " />     
-    <meta الممتلكات.="og:title" content="QuantumSafe" />
-    <meta property="OG:الوصف" content="مسح وحماية الأصول الرقمية الخاصة بك ضد التهديدات الكمومية".. />
- <!- <!- <meta property="og:image" content="/logo.png" /> ->الملكية الوصفية="og:image" content="/logo.png" /> -->
-    <meta property="og:type" content="موقع إلكتروني" />
- <!- <!- <link rel="icon" type="صورة/png" href="/favicon.png"/> -> رابط rel="icon" type="صورة/png" href="/favicon.png"/>->
-  </رئيس.>
-  <الجسم.>
-    <div. معرف.="root"></div>
-    <!-- سوف Vite حقن مسار السيناريو الصحيح أثناء البناء -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuantumSafe - الحماية الكمية للأصول الرقمية</title>
+    <meta name="description" content="QuantumSafe: مسح وحماية الأصول الرقمية الخاصة بك ضد التهديدات الكمية. اكسب النقاط، وشارك النتائج، ودعوة الأصدقاء!" />
+    <meta property="og:title" content="QuantumSafe - الحماية الكمية للأصول الرقمية" />
+    <meta property="og:description" content="مسح وحماية الأصول الرقمية الخاصة بك ضد التهديدات الكمية" />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0a0a0a;
+        color: #ffffff;
+        line-height: 1.6;
+      }
+      
+      #root {
+        min-height: 100vh;
+      }
+      
+      /* Loading animation */
+      .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+      }
+      
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(0, 245, 255, 0.3);
+        border-top: 3px solid #00f5ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
