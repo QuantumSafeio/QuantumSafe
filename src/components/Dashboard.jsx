@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { scanAsset } from '../services/scanner';
 import ScanResult from './ScanResult';
 import PromoTweets from './PromoTweets';
+import MultiChainPaymentModal from './MultiChainPaymentModal';
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -18,6 +19,10 @@ export default function Dashboard() {
   const [assetInput, setAssetInput] = useState('');
   const [currentScanResult, setCurrentScanResult] = useState(null);
   const [activeTab, setActiveTab] = useState('scanner');
+
+  // Payment modal state
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState('');
 
   // Analytics state
   const [analytics, setAnalytics] = useState({
@@ -187,6 +192,17 @@ export default function Dashboard() {
     }
   };
 
+  const handlePaymentClick = (serviceType) => {
+    setSelectedService(serviceType);
+    setPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = (paymentResult) => {
+    console.log('Payment successful:', paymentResult);
+    // Refresh user data to show updated points
+    fetchUserData();
+  };
+
   const assetTypes = [
     { 
       value: 'contract', 
@@ -281,7 +297,7 @@ export default function Dashboard() {
       padding: '20px'
     }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Header */}
+        {/* Header with Glowing Effect */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -302,7 +318,9 @@ export default function Dashboard() {
               WebkitTextFillColor: 'transparent',
               fontWeight: 'bold',
               margin: 0,
-              letterSpacing: '-0.02em'
+              letterSpacing: '-0.02em',
+              animation: 'glow 2s ease-in-out infinite alternate',
+              textShadow: '0 0 20px rgba(0, 245, 255, 0.5)'
             }}>
               🛡️ QuantumSafe
             </h1>
@@ -326,7 +344,8 @@ export default function Dashboard() {
                 borderRadius: '12px',
                 fontSize: '12px',
                 fontWeight: 'bold',
-                border: '1px solid rgba(0, 255, 136, 0.3)'
+                border: '1px solid rgba(0, 255, 136, 0.3)',
+                animation: 'pulse 2s infinite'
               }}>
                 ✅ ACTIVE
               </div>
@@ -346,7 +365,12 @@ export default function Dashboard() {
               border: '1px solid rgba(0, 245, 255, 0.3)',
               textAlign: 'center'
             }}>
-              <div style={{ color: '#00f5ff', fontSize: '24px', fontWeight: 'bold' }}>
+              <div style={{ 
+                color: '#00f5ff', 
+                fontSize: '24px', 
+                fontWeight: 'bold',
+                animation: 'glow 2s ease-in-out infinite alternate'
+              }}>
                 {userPoints}
               </div>
               <div style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '12px' }}>
@@ -877,7 +901,25 @@ export default function Dashboard() {
                 <div style={{ fontSize: '2rem', marginBottom: '10px' }}>💡</div>
                 <strong>Need More Points?</strong>
                 <br />
-                Share your scan results on Twitter, invite friends, or complete daily challenges to earn points!
+                Share your scan results on Twitter, invite friends, or use our crypto payment system to get instant access!
+                <br />
+                <button
+                  onClick={() => handlePaymentClick('wallet_scan')}
+                  style={{
+                    marginTop: '15px',
+                    padding: '12px 25px',
+                    background: 'linear-gradient(45deg, #00f5ff, #0099cc)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  💳 Pay with Crypto
+                </button>
               </div>
             )}
           </div>
@@ -1052,12 +1094,38 @@ export default function Dashboard() {
             user={user}
           />
         )}
+
+        {/* Multi-Chain Payment Modal */}
+        <MultiChainPaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          serviceType={selectedService}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
       </div>
 
       <style jsx>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes glow {
+          from {
+            text-shadow: 0 0 20px rgba(0, 245, 255, 0.5), 0 0 30px rgba(0, 245, 255, 0.3), 0 0 40px rgba(0, 245, 255, 0.2);
+          }
+          to {
+            text-shadow: 0 0 30px rgba(0, 245, 255, 0.8), 0 0 40px rgba(0, 245, 255, 0.5), 0 0 50px rgba(0, 245, 255, 0.3);
+          }
+        }
+        
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
         }
       `}</style>
     </div>
