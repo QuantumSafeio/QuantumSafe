@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { shareOnTwitter } from '../services/twitter';
+import PaymentModal from './PaymentModal';
 
 export default function ScanResult({ result, assetType, user }) {
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  
   if (!result) return null;
 
   const insurancePrice = (assetType === 'contract' || assetType === 'app') ? 2000 : 500;
+  const serviceType = assetType === 'contract' ? 'contract_scan' : 
+                     assetType === 'app' ? 'app_scan' : 
+                     assetType === 'wallet' ? 'wallet_scan' : 
+                     assetType === 'nft' ? 'nft_scan' : 'token_scan';
 
   const handleTwitterShare = async () => {
     try {
@@ -24,6 +31,15 @@ ${window.location.origin}/login?ref=${user?.id}
       
       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
     }
+  };
+
+  const handleInsuranceClick = () => {
+    setPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = (paymentResult) => {
+    console.log('Insurance payment successful:', paymentResult);
+    // You could show a success message or update the UI
   };
 
   const getRiskColor = (risk) => {
@@ -341,6 +357,7 @@ ${window.location.origin}/login?ref=${user?.id}
         </button>
 
         <button
+          onClick={handleInsuranceClick}
           style={{
             padding: '18px 25px',
             borderRadius: '15px',
@@ -370,6 +387,14 @@ ${window.location.origin}/login?ref=${user?.id}
         </button>
       </div>
 
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        serviceType={serviceType}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+
       {/* Points Info */}
       <div style={{
         marginTop: '25px',
@@ -388,13 +413,14 @@ ${window.location.origin}/login?ref=${user?.id}
           marginBottom: '10px'
         }}>
           <span style={{ fontSize: '18px' }}>💡</span>
-          <strong style={{ color: '#00f5ff' }}>Earn More Points:</strong>
+          <strong style={{ color: '#00f5ff' }}>Earn More Points & Get Protection:</strong>
         </div>
         <ul style={{ margin: 0, paddingLeft: '20px' }}>
           <li>Share this scan on Twitter to earn 1 point instantly</li>
           <li>Get 0.5 points for every 7 likes/retweets on your tweet</li>
           <li>Earn 0.5 points for every 3 comments on your tweet</li>
           <li>Invite friends and earn 7% of their points forever</li>
+          <li><strong>NEW:</strong> Pay with crypto for instant premium protection and insurance coverage</li>
         </ul>
       </div>
     </div>
