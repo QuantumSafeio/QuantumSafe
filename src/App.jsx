@@ -1,48 +1,48 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth';
-import Login from './components/Login';
+الاستيراد React from 'react';
+الاستيراد { BrowserRouter, {, متصفح, Navigate } from الطرق;
+import { استخدام  اليوتاليوت  } from ' . useAuth } from './hooks/useAuth';
+'/المكونات/التسجيلات' Login المكونات './components/Login'التسجيلات
 import Dashboard from './components/Dashboard';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Protected route component for authenticated pages
-function PrivateRoute({ children }) {
-  const { user, loading } = useAuth();
+// مكون الطريق المحمي للصفحات الموثقة
+وظيفة PrivateRoute({ الطريق }) (
+  كونست { user, { المستخدم = useAuth();
   
-  if (loading) {
-    return <LoadingSpinner message="Checking user credentials..." />;
+  إذا (loading) {
+    العودةالعودة <LoadingSpinner messageتحميل  رسالة />;
   }
   
-  return user ? children : <Navigate to="/login" replace />;
+  العودة user ? children : <Navigate to="/login" < />;
 }
 
 // Public route component for redirecting authenticated users
 function PublicRoute({ children }) {
-  const { user, loading } = useAuth();
+  كونست { user, المستخدم المستخدم = useAuth();
   
-  if (loading) {
-    return <LoadingSpinner message="Checking user credentials..." />;
+    إذا (تحميل) .    {
+ العودة. <LoadingSpinner العودة="Checking user credentials..." />;
   }
   
-  return user ? <Navigate to="/" replace /> : children;
+  عودة المستخدم؟ عودة  المستخدم؟     :.... الأطفال؛: الأطفال؛to : الأطفال؛: الأطفال؛   Navigate to="/" replace /> : الأطفال؛<Navigate to="/" replace /> : children;
 }
 
 // Main App component
 export default function App() {
   return (
-    <ErrorBoundary>
-      <BrowserRouter basename="/QuantumSafe">
+    <خطأ>
+      <متصفح basename="/QuantumSafe">
         <div style={{ 
-          minHeight: '100vh', 
-          backgroundColor: '#0a0a0a',
+          minالارتفاع: '100vh', 
+          خلفية: اللون,
           color: '#ffffff',
           fontFamily: 'Cairo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         }}>
           <Routes>
-            {/* Login page */}
+            {/* صفحة تسجيل الدخول */}
             <Route 
-              path="/login" 
+              المسار="/login" 
               element={
                 <PublicRoute>
                   <Login />
@@ -50,7 +50,7 @@ export default function App() {
               } 
             />
             
-            {/* Protected dashboard */}
+            {/* لوحة القيادة المحمية */}
             <Route 
               path="/" 
               element={
@@ -60,7 +60,7 @@ export default function App() {
               } 
             />
             
-            {/* Redirect all other routes to home */}
+            {/* إعادة توجيه جميع الطرق الأخرى إلى المنزل */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
