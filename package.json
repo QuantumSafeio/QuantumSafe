@@ -3,13 +3,10 @@
   "version": "1.0.0",
   "description": "QuantumSafe - Digital Asset Quantum Protection",
   "main": "index.js",
-  "homepage": "https://quantumsafeio.github.io/QuantumSafe/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "preview": "vite preview"
   },
   "keywords": ["quantum", "blockchain", "security", "crypto", "web3"],
   "author": "QuantumSafe Team",
@@ -25,7 +22,6 @@
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.5.2",
-    "gh-pages": "^6.0.0",
     "vite": "^5.2.8"
   }
 }
