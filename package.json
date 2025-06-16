@@ -4,9 +4,11 @@
   "description": "QuantumSafe - Digital Asset Quantum Protection",
   "main": "index.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clean": "rm -rf dist node_modules/.cache .vite",
+    "optimize": "npm run clean && npm run build"
   },
   "keywords": ["quantum", "blockchain", "security", "crypto", "web3"],
   "author": "QuantumSafe Team",
@@ -19,8 +21,6 @@
     "ethers": "^6.13.4"
   },
   "devDependencies": {
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.5.2",
     "vite": "^5.2.8"
   }
