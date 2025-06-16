@@ -40,7 +40,7 @@ class ErrorBoundary extends React.Component {
               fontSize: '2rem',
               marginBottom: '20px'
             }}>
-              ⚠️ Application Error
+              Application Error
             </h1>
             <p style={{
               color: '#111827',
@@ -83,7 +83,7 @@ class ErrorBoundary extends React.Component {
                 cursor: 'pointer'
               }}
             >
-              🔄 Reload Page
+              Reload Page
             </button>
           </div>
         </div>

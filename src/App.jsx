@@ -6,7 +6,6 @@ import Dashboard from './components/Dashboard';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Protected route component for authenticated pages
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   
@@ -17,7 +16,6 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />;
 }
 
-// Public route component to redirect authenticated users
 function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   
@@ -28,7 +26,6 @@ function PublicRoute({ children }) {
   return user ? <Navigate to="/" replace /> : children;
 }
 
-// Main App component
 export default function App() {
   return (
     <ErrorBoundary>
@@ -40,7 +37,6 @@ export default function App() {
           fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' 
         }}>
           <Routes>
-            {/* Login page */}
             <Route 
               path="/login" 
               element={
@@ -50,7 +46,6 @@ export default function App() {
               } 
             />
             
-            {/* Protected dashboard */}
             <Route 
               path="/" 
               element={
@@ -60,7 +55,6 @@ export default function App() {
               } 
             />
             
-            {/* Redirect all other routes to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

@@ -51,11 +51,11 @@ npm install
 # Start development server
 npm run dev
 
-# Build production version (optimized)
-npm run optimize
+# Build production version
+npm run build
 
-# Clean temporary files
-npm run clean
+# Deploy to GitHub Pages
+npm run deploy
 ```
 
 ## 🛠️ Technology Stack

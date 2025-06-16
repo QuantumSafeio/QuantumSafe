@@ -7,8 +7,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: false, // تعطيل source maps لتوفير المساحة
-    minify: 'terser', // ضغط أفضل للملفات
+    sourcemap: false,
+    minify: 'terser',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -17,17 +17,15 @@ export default defineConfig({
           supabase: ['@supabase/supabase-js'],
           ethers: ['ethers']
         },
-        // تقليل أسماء الملفات
         chunkFileNames: 'js/[name]-[hash:8].js',
         entryFileNames: 'js/[name]-[hash:8].js',
         assetFileNames: 'assets/[name]-[hash:8].[ext]'
       }
     },
-    // تحسين حجم البناء
     chunkSizeWarningLimit: 1000,
     terserOptions: {
       compress: {
-        drop_console: true, // إزالة console.log في الإنتاج
+        drop_console: true,
         drop_debugger: true
       }
     }
@@ -35,7 +33,6 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js', 'ethers']
   },
-  // تحسين الذاكرة أثناء التطوير
   server: {
     hmr: {
       overlay: false
