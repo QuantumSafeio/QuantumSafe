@@ -11,7 +11,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('خطأ في التطبيق:', error, errorInfo);
+    console.error('Application Error:', error, errorInfo);
   }
 
   render() {
@@ -39,7 +39,7 @@ class ErrorBoundary extends React.Component {
               fontSize: '2rem',
               marginBottom: '20px'
             }}>
-              ⚠️ حدث خطأ غير متوقع
+              ⚠️ Unexpected Error
             </h1>
             <p style={{
               color: '#ffffff',
@@ -47,7 +47,7 @@ class ErrorBoundary extends React.Component {
               marginBottom: '20px',
               lineHeight: '1.6'
             }}>
-              نعتذر، حدث خطأ في التطبيق. يرجى إعادة تحميل الصفحة أو المحاولة مرة أخرى لاحقاً.
+              Sorry, an error occurred in the application. Please reload the page or try again later.
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -62,7 +62,7 @@ class ErrorBoundary extends React.Component {
                 cursor: 'pointer'
               }}
             >
-              🔄 إعادة تحميل الصفحة
+              🔄 Reload Page
             </button>
           </div>
         </div>

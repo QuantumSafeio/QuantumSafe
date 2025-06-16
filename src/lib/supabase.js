@@ -14,7 +14,7 @@ export async function getUserPoints(userId) {
       .eq('user_id', userId)
       .single()
     
-    if (error) throw error
+    if (error && error.code !== 'PGRST116') throw error
     return data?.points || 0
   } catch (error) {
     console.error('Error fetching user points:', error)
@@ -26,7 +26,11 @@ export async function updateUserPoints(userId, points) {
   try {
     const { data, error } = await supabase
       .from('user_points')
-      .upsert({ user_id: userId, points })
+      .upsert({ 
+        user_id: userId, 
+        points,
+        updated_at: new Date().toISOString()
+      })
       .select()
     
     if (error) throw error
@@ -75,5 +79,75 @@ export async function saveReferral(newUserId, referrerId) {
   } catch (error) {
     console.error('Error saving referral:', error)
     return null
+  }
+}
+
+export async function getUserProfile(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+  } catch (error) {
+    console.error('Error fetching user profile:', error)
+    return null
+  }
+}
+
+export async function updateUserProfile(userId, profileData) {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .upsert({
+        user_id: userId,
+        ...profileData,
+        updated_at: new Date().toISOString()
+      })
+      .select()
+    
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error updating user profile:', error)
+    return null
+  }
+}
+
+export async function getScanHistory(userId, limit = 10) {
+  try {
+    const { data, error } = await supabase
+      .from('scan_results')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('Error fetching scan history:', error)
+    return []
+  }
+}
+
+export async function getReferralStats(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('referrals')
+      .select('*')
+      .eq('referrer_id', userId)
+    
+    if (error) throw error
+    return {
+      totalReferrals: data?.length || 0,
+      totalPointsEarned: (data?.length || 0) * 10
+    }
+  } catch (error) {
+    console.error('Error fetching referral stats:', error)
+    return { totalReferrals: 0, totalPointsEarned: 0 }
   }
 }

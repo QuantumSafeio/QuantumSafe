@@ -1,22 +1,29 @@
 import React from 'react';
+import { shareOnTwitter } from '../services/twitter';
 
 export default function ScanResult({ result, assetType, user }) {
   if (!result) return null;
 
   const insurancePrice = (assetType === 'contract' || assetType === 'app') ? 2000 : 500;
 
-  const shareOnTwitter = () => {
-    const text = `🛡️ نتيجة فحص QuantumSafe لـ ${assetType}:
+  const handleTwitterShare = async () => {
+    try {
+      await shareOnTwitter(result, assetType, user);
+    } catch (error) {
+      console.error('Error sharing on Twitter:', error);
+      // Fallback to manual tweet
+      const text = `🛡️ QuantumSafe scan result for ${assetType}:
     
-🎯 مستوى التهديد الكمي: ${result.quantumRisk}
-🔍 الأصل: ${result.asset}
+🎯 Quantum Threat Level: ${result.quantumRisk}
+🔍 Asset: ${result.asset}
     
-تم الفحص بواسطة QuantumSafe 🚀
+Scanned with QuantumSafe 🚀
 ${window.location.origin}/login?ref=${user?.id}
 
 #QuantumSafe #BlockchainSecurity #QuantumThreat`;
-    
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+      
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+    }
   };
 
   const getRiskColor = (risk) => {
@@ -51,7 +58,7 @@ ${window.location.origin}/login?ref=${user?.id}
         color: '#00f5ff',
         fontSize: '1.5rem'
       }}>
-        📊 نتيجة الفحص: {assetType.charAt(0).toUpperCase() + assetType.slice(1)}
+        📊 Scan Result: {assetType.charAt(0).toUpperCase() + assetType.slice(1)}
       </h3>
 
       <div style={{
@@ -61,7 +68,7 @@ ${window.location.origin}/login?ref=${user?.id}
         marginBottom: '20px'
       }}>
         <div style={{ marginBottom: '15px' }}>
-          <strong style={{ color: '#ffffff' }}>🎯 عنوان الأصل:</strong>
+          <strong style={{ color: '#ffffff' }}>🎯 Asset Address:</strong>
           <div style={{
             marginTop: '5px',
             padding: '10px',
@@ -81,7 +88,7 @@ ${window.location.origin}/login?ref=${user?.id}
           gap: '10px',
           marginBottom: '20px'
         }}>
-          <strong style={{ color: '#ffffff' }}>⚡ مستوى التهديد الكمي:</strong>
+          <strong style={{ color: '#ffffff' }}>⚡ Quantum Threat Level:</strong>
           <span style={{
             color: getRiskColor(result.quantumRisk),
             fontWeight: 'bold',
@@ -108,7 +115,7 @@ ${window.location.origin}/login?ref=${user?.id}
           marginBottom: '15px',
           fontSize: '1.2rem'
         }}>
-          🔍 الثغرات المكتشفة:
+          🔍 Vulnerabilities Detected:
         </h4>
         <div style={{ display: 'grid', gap: '12px' }}>
           {result.details.map((detail, index) => (
@@ -142,7 +149,7 @@ ${window.location.origin}/login?ref=${user?.id}
                 fontSize: '14px',
                 lineHeight: '1.4'
               }}>
-                {detail.description || 'تم اكتشاف ثغرة أمنية تتطلب اهتماماً فورياً'}
+                {detail.description || 'Security vulnerability detected that requires immediate attention'}
               </p>
             </div>
           ))}
@@ -155,7 +162,7 @@ ${window.location.origin}/login?ref=${user?.id}
         gap: '15px'
       }}>
         <button
-          onClick={shareOnTwitter}
+          onClick={handleTwitterShare}
           style={{
             padding: '15px 20px',
             borderRadius: '12px',
@@ -172,7 +179,7 @@ ${window.location.origin}/login?ref=${user?.id}
             gap: '8px'
           }}
         >
-          🐦 مشاركة على تويتر
+          🐦 Share on Twitter
         </button>
 
         <button
@@ -192,7 +199,7 @@ ${window.location.origin}/login?ref=${user?.id}
             gap: '8px'
           }}
         >
-          🛡️ تأمين الأصل (${insurancePrice})
+          🛡️ Insure Asset (${insurancePrice})
         </button>
       </div>
 
@@ -206,8 +213,8 @@ ${window.location.origin}/login?ref=${user?.id}
         border: '1px solid rgba(0, 255, 255, 0.3)'
       }}>
         <p style={{ margin: 0 }}>
-          <strong>💡 نصيحة:</strong> شارك نتائج الفحص على تويتر لكسب نقاط إضافية! 
-          كل 3 إعجابات أو إعادة تغريد = نقطة واحدة، وكل تعليق = نقطة واحدة.
+          <strong>💡 Tip:</strong> Share your scan results on Twitter to earn additional points! 
+          Every 3 likes or retweets = 1 point, and every comment = 1 point.
         </p>
       </div>
     </div>

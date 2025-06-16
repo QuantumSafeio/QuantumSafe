@@ -1,87 +1,119 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { connectWallet } from '../services/wallet';
+import { initiateTwitterAuth } from '../services/twitter';
 
 export default function Login() {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [wallet, setWallet] = useState(null);
-  const [walletError, setWalletError] = useState('');
-  const [referral, setReferral] = useState(null);
+  const [walletAddress, setWalletAddress] = useState('');
+  const [error, setError] = useState('');
+  const [referralCode, setReferralCode] = useState('');
 
-  // التحقق من رمز الإحالة في الرابط
   useEffect(() => {
+    // Check for referral code in URL
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
     if (ref) {
-      localStorage.setItem('referral', ref);
-      setReferral(ref);
+      setReferralCode(ref);
+      localStorage.setItem('referral_code', ref);
     }
   }, []);
 
-  // إعادة توجيه إذا كان المستخدم مسجل دخول
-  if (user) {
-    return <Navigate to="/" />;
-  }
-
-  // تسجيل الدخول بالإيميل
-  const handleEmailAuth = async (e) => {
-    e.preventDefault();
+  const handleWalletLogin = async () => {
     setLoading(true);
-
+    setError('');
+    
     try {
-      const { data, error } = isSignUp
-        ? await supabase.auth.signUp({ email, password })
-        : await supabase.auth.signInWithPassword({ email, password });
+      const { address, signature } = await connectWallet();
+      setWalletAddress(address);
+      
+      // Create or get user with wallet address
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('wallet_address', address)
+        .single();
 
-      if (error) throw error;
-
-      if (isSignUp && data.user) {
-        // إضافة نقاط ابتدائية للمستخدم الجديد
-        await supabase
-          .from('user_points')
-          .insert({ user_id: data.user.id, points: 50 });
-
-        // معالجة الإحالة إذا وجدت
-        const referralCode = localStorage.getItem('referral');
-        if (referralCode) {
-          await supabase
-            .from('referrals')
-            .insert({
-              new_user_id: data.user.id,
-              referrer_id: referralCode
-            });
-          localStorage.removeItem('referral');
-        }
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
       }
-    } catch (error) {
-      alert(error.message);
+
+      if (!existingUser) {
+        // Create new user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: `${address}@wallet.local`,
+          password: signature.slice(0, 20) + 'QuantumSafe2024!'
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Create user profile
+          await supabase.from('user_profiles').insert({
+            user_id: authData.user.id,
+            wallet_address: address
+          });
+
+          // Add initial points
+          await supabase.from('user_points').insert({
+            user_id: authData.user.id,
+            points: 50
+          });
+
+          // Handle referral if exists
+          const storedReferral = localStorage.getItem('referral_code');
+          if (storedReferral) {
+            await supabase.from('referrals').insert({
+              new_user_id: authData.user.id,
+              referrer_id: storedReferral,
+              points_awarded: 10
+            });
+            
+            // Award points to referrer
+            const { data: referrerPoints } = await supabase
+              .from('user_points')
+              .select('points')
+              .eq('user_id', storedReferral)
+              .single();
+            
+            if (referrerPoints) {
+              await supabase
+                .from('user_points')
+                .update({ points: referrerPoints.points + 10 })
+                .eq('user_id', storedReferral);
+            }
+            
+            localStorage.removeItem('referral_code');
+          }
+        }
+      } else {
+        // Sign in existing user
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: `${address}@wallet.local`,
+          password: signature.slice(0, 20) + 'QuantumSafe2024!'
+        });
+
+        if (signInError) throw signInError;
+      }
+    } catch (err) {
+      console.error('Wallet login error:', err);
+      setError(err.message || 'Failed to connect wallet');
     } finally {
       setLoading(false);
     }
   };
 
-  // ربط محفظة Web3
-  const handleWeb3Login = async () => {
-    setWalletError('');
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ 
-          method: 'eth_requestAccounts' 
-        });
-        setWallet(accounts[0]);
-        
-        // يمكن ربط المحفظة بالمستخدم هنا
-        alert(`تم ربط المحفظة: ${accounts[0]}`);
-      } catch (err) {
-        setWalletError('فشل في الاتصال بمحفظة MetaMask.');
-      }
-    } else {
-      setWalletError('يرجى تثبيت MetaMask أولاً.');
+  const handleTwitterLogin = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      await initiateTwitterAuth();
+    } catch (err) {
+      console.error('Twitter login error:', err);
+      setError(err.message || 'Failed to connect Twitter');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,134 +148,115 @@ export default function Login() {
           🛡️ QuantumSafe
         </h1>
 
-        <form onSubmit={handleEmailAuth} style={{ marginBottom: '20px' }}>
-          <input
-            type="email"
-            placeholder="البريد الإلكتروني"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              padding: '12px',
-              marginBottom: '15px',
-              border: 'none',
-              borderRadius: '10px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              fontSize: '16px'
-            }}
-          />
-          <input
-            type="password"
-            placeholder="كلمة المرور"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              padding: '12px',
-              marginBottom: '20px',
-              border: 'none',
-              borderRadius: '10px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              fontSize: '16px'
-            }}
-          />
+        <p style={{
+          textAlign: 'center',
+          marginBottom: '30px',
+          color: 'rgba(255, 255, 255, 0.8)',
+          fontSize: '16px'
+        }}>
+          Connect your wallet or Twitter to start scanning digital assets for quantum threats
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <button
-            type="submit"
+            onClick={handleWalletLogin}
             disabled={loading}
             style={{
               width: '100%',
-              padding: '12px',
+              padding: '15px',
               border: 'none',
-              borderRadius: '10px',
-              background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
+              borderRadius: '12px',
+              background: 'linear-gradient(45deg, #f6851b, #e76f00)',
               color: 'white',
               fontSize: '16px',
               fontWeight: 'bold',
-              cursor: 'pointer',
-              marginBottom: '10px'
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
             }}
           >
-            {loading ? 'جاري التحميل...' : (isSignUp ? 'إنشاء حساب' : 'تسجيل الدخول')}
+            🦊 Connect MetaMask Wallet
           </button>
-        </form>
 
-        <button
-          onClick={() => setIsSignUp(!isSignUp)}
-          style={{
-            width: '100%',
-            padding: '10px',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            borderRadius: '10px',
-            background: 'transparent',
-            color: 'white',
-            fontSize: '14px',
-            cursor: 'pointer',
-            marginBottom: '20px'
-          }}
-        >
-          {isSignUp ? 'لديك حساب؟ سجل دخول' : 'ليس لديك حساب؟ أنشئ حساب'}
-        </button>
-
-        <div style={{ textAlign: 'center', margin: '20px 0', color: 'rgba(255, 255, 255, 0.7)' }}>
-          أو
-        </div>
-
-        <button
-          onClick={handleWeb3Login}
-          style={{
-            width: '100%',
-            padding: '12px',
-            border: 'none',
-            borderRadius: '10px',
-            background: '#f6851b',
-            color: 'white',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          🦊 ربط محفظة MetaMask
-        </button>
-
-        {wallet && (
-          <div style={{ 
-            marginTop: '15px', 
-            padding: '10px',
-            background: 'rgba(0, 255, 0, 0.2)',
-            borderRadius: '10px',
+          <div style={{
+            textAlign: 'center',
+            margin: '10px 0',
+            color: 'rgba(255, 255, 255, 0.6)',
             fontSize: '14px'
           }}>
-            ✅ تم ربط المحفظة: <br />
-            <code style={{ fontSize: '12px' }}>{wallet}</code>
+            or
+          </div>
+
+          <button
+            onClick={handleTwitterLogin}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '15px',
+              border: 'none',
+              borderRadius: '12px',
+              background: 'linear-gradient(45deg, #1da1f2, #0d8bd9)',
+              color: 'white',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
+            }}
+          >
+            🐦 Connect Twitter Account
+          </button>
+        </div>
+
+        {walletAddress && (
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            background: 'rgba(0, 255, 0, 0.1)',
+            borderRadius: '10px',
+            border: '1px solid rgba(0, 255, 0, 0.3)'
+          }}>
+            <p style={{ fontSize: '14px', color: '#00ff88', marginBottom: '5px' }}>
+              ✅ Wallet Connected
+            </p>
+            <code style={{ fontSize: '12px', wordBreak: 'break-all' }}>
+              {walletAddress}
+            </code>
           </div>
         )}
 
-        {walletError && (
-          <div style={{ 
-            marginTop: '15px', 
-            padding: '10px',
-            background: 'rgba(255, 0, 0, 0.2)',
+        {error && (
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            background: 'rgba(255, 0, 0, 0.1)',
             borderRadius: '10px',
+            border: '1px solid rgba(255, 0, 0, 0.3)',
             color: '#ff6b6b',
             fontSize: '14px'
           }}>
-            {walletError}
+            {error}
           </div>
         )}
 
-        {referral && (
-          <div style={{ 
-            marginTop: '15px', 
-            padding: '10px',
-            background: 'rgba(0, 255, 255, 0.2)',
+        {referralCode && (
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            background: 'rgba(0, 255, 255, 0.1)',
             borderRadius: '10px',
+            border: '1px solid rgba(0, 255, 255, 0.3)',
             fontSize: '14px'
           }}>
-            🎁 رمز الإحالة: <strong>{referral}</strong>
+            🎁 Referral Code: <strong>{referralCode}</strong>
+            <br />
+            <small style={{ opacity: 0.8 }}>You'll get bonus points when you sign up!</small>
           </div>
         )}
       </div>
@@ -256,10 +269,10 @@ export default function Login() {
         maxWidth: '500px'
       }}>
         <p>
-          <strong>🔐 كيف يعمل تسجيل الدخول في QuantumSafe؟</strong><br />
-          • سجل دخول بالإيميل للوصول إلى لوحة التحكم وفحص الأصول<br />
-          • أو اربط محفظة Web3 للوصول المباشر<br />
-          • احصل على 50 نقطة مجانية عند التسجيل!
+          <strong>🔐 How does QuantumSafe authentication work?</strong><br />
+          • Connect your Web3 wallet for direct access to asset scanning<br />
+          • Or link your Twitter account to track engagement and earn points<br />
+          • Get 50 free points when you sign up!
         </p>
       </div>
     </div>

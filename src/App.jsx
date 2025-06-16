@@ -22,7 +22,7 @@ function PublicRoute({ children }) {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return <LoadingSpinner message="Checking user credentials..." />;
+    return <LoadingSpinner message="Checking authentication..." />;
   }
   
   return user ? <Navigate to="/" replace /> : children;
@@ -37,7 +37,7 @@ export default function App() {
           minHeight: '100vh', 
           backgroundColor: '#0a0a0a',
           color: '#ffffff', 
-          fontFamily: 'Cairo, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' 
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' 
         }}>
           <Routes>
             {/* Login page */}

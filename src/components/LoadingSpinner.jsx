@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function LoadingSpinner({ message = 'جاري التحميل...' }) {
+export default function LoadingSpinner({ message = 'Loading...' }) {
   return (
     <div style={{
       display: 'flex',

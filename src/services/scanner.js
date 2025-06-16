@@ -1,94 +1,116 @@
-// خدمة محاكاة فحص الأصول الرقمية للتهديدات الكمية
+// Digital asset quantum threat scanning service
 
 export async function scanAsset(assetType, assetInput) {
-  // محاكاة تأخير الفحص
+  // Simulate scan delay
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  // قاعدة بيانات الثغرات المحتملة
+  // Vulnerability database
   const vulnerabilityDatabase = {
     contract: [
       {
-        vuln: "ثغرة خوارزمية شور (Shor's Algorithm)",
+        vuln: "Shor's Algorithm Vulnerability",
         risk: 'High',
-        description: 'العقد الذكي يستخدم تشفير ECDSA القابل للكسر بواسطة الحاسوب الكمي'
+        description: 'Smart contract uses ECDSA encryption that can be broken by quantum computers'
       },
       {
-        vuln: "ضعف خوارزمية جروفر (Grover's Algorithm)",
+        vuln: "Grover's Algorithm Weakness",
         risk: 'High',
-        description: 'دوال الهاش المستخدمة قابلة للاختراق بواسطة خوارزمية جروفر'
+        description: 'Hash functions used are vulnerable to Grover\'s algorithm attacks'
       },
       {
-        vuln: "عدم دعم التوقيعات المقاومة للكم",
+        vuln: "No Post-Quantum Signature Support",
         risk: 'Medium',
-        description: 'العقد لا يدعم أنظمة التوقيع المقاومة للحاسوب الكمي'
+        description: 'Contract does not support quantum-resistant signature schemes'
+      },
+      {
+        vuln: "Legacy Cryptographic Implementation",
+        risk: 'Medium',
+        description: 'Uses outdated cryptographic methods vulnerable to quantum attacks'
       }
     ],
     wallet: [
       {
-        vuln: "مفاتيح RSA/ECDSA غير آمنة كمياً",
+        vuln: "RSA/ECDSA Keys Not Quantum-Safe",
         risk: 'High',
-        description: 'المحفظة تستخدم مفاتيح تشفير قابلة للكسر بالحاسوب الكمي'
+        description: 'Wallet uses encryption keys that can be broken by quantum computers'
       },
       {
-        vuln: "عدم وجود استراتيجية ترقية كمية",
+        vuln: "No Quantum Migration Strategy",
         risk: 'Medium',
-        description: 'المحفظة تفتقر لخطة الانتقال للتشفير المقاوم للكم'
+        description: 'Wallet lacks a plan for transitioning to quantum-resistant encryption'
+      },
+      {
+        vuln: "Predictable Key Generation",
+        risk: 'Medium',
+        description: 'Key generation process may be predictable to quantum algorithms'
       }
     ],
     nft: [
       {
-        vuln: "بيانات وصفية مركزية",
+        vuln: "Centralized Metadata Storage",
         risk: 'Medium',
-        description: 'البيانات الوصفية مخزنة بشكل مركزي وقابلة للتلاعب'
+        description: 'Metadata is stored centrally and vulnerable to manipulation'
       },
       {
-        vuln: "ضعف في آلية التحقق",
+        vuln: "Weak Verification Mechanism",
         risk: 'Low',
-        description: 'آلية التحقق من الأصالة قد تكون عرضة للهجمات الكمية'
+        description: 'Authenticity verification mechanism may be vulnerable to quantum attacks'
+      },
+      {
+        vuln: "Non-Upgradeable Contract",
+        risk: 'Low',
+        description: 'Contract cannot be upgraded to quantum-resistant standards'
       }
     ],
     memecoin: [
       {
-        vuln: "عدم وجود حماية كمية",
+        vuln: "No Quantum Protection",
         risk: 'Medium',
-        description: 'العملة تفتقر للحماية ضد الهجمات الكمية المستقبلية'
+        description: 'Token lacks protection against future quantum attacks'
       },
       {
-        vuln: "ضعف في بروتوكول الإجماع",
+        vuln: "Weak Consensus Protocol",
         risk: 'Low',
-        description: 'بروتوكول الإجماع قد يكون عرضة للتلاعب الكمي'
+        description: 'Consensus protocol may be vulnerable to quantum manipulation'
+      },
+      {
+        vuln: "Insufficient Cryptographic Diversity",
+        risk: 'Low',
+        description: 'Relies on single cryptographic method vulnerable to quantum attacks'
       }
     ],
     app: [
       {
-        vuln: "عدم تشفير البيانات الحساسة",
+        vuln: "Unencrypted Sensitive Data",
         risk: 'High',
-        description: 'التطبيق لا يستخدم تشفير مقاوم للحاسوب الكمي'
+        description: 'Application does not use quantum-resistant encryption for sensitive data'
       },
       {
-        vuln: "ثغرات في طبقة الاتصال",
+        vuln: "Communication Layer Vulnerabilities",
         risk: 'Medium',
-        description: 'بروتوكولات الاتصال غير محمية ضد الهجمات الكمية'
+        description: 'Communication protocols are not protected against quantum attacks'
+      },
+      {
+        vuln: "Weak Authentication System",
+        risk: 'Medium',
+        description: 'Authentication system vulnerable to quantum cryptanalysis'
       }
     ]
   };
 
-  // اختيار الثغرات بناءً على نوع الأصل
+  // Select vulnerabilities based on asset type
   const possibleVulns = vulnerabilityDatabase[assetType] || [];
   
-  // اختيار عشوائي للثغرات (2-4 ثغرات)
+  // Randomly select 2-4 vulnerabilities
   const numVulns = Math.floor(Math.random() * 3) + 2;
   const selectedVulns = [];
   
-  for (let i = 0; i < numVulns && i < possibleVulns.length; i++) {
-    const randomIndex = Math.floor(Math.random() * possibleVulns.length);
-    const vuln = possibleVulns[randomIndex];
-    if (!selectedVulns.find(v => v.vuln === vuln.vuln)) {
-      selectedVulns.push(vuln);
-    }
+  const shuffled = [...possibleVulns].sort(() => 0.5 - Math.random());
+  for (let i = 0; i < numVulns && i < shuffled.length; i++) {
+    selectedVulns.push(shuffled[i]);
   }
 
-  // تحديد مستوى المخاطر الإجمالي
+  // Determine overall risk level
   let quantumRisk = 'Low';
   const highRiskCount = selectedVulns.filter(v => v.risk === 'High').length;
   const mediumRiskCount = selectedVulns.filter(v => v.risk === 'Medium').length;
@@ -99,9 +121,14 @@ export async function scanAsset(assetType, assetInput) {
     quantumRisk = 'Medium';
   }
 
-  // إضافة تنويع بناءً على نوع الأصل
+  // Add variation based on asset type
   if (assetType === 'contract' || assetType === 'app') {
     quantumRisk = highRiskCount > 0 ? 'High' : 'Medium';
+  }
+
+  // Add some randomness to make results more realistic
+  if (Math.random() < 0.1) {
+    quantumRisk = quantumRisk === 'High' ? 'Medium' : quantumRisk === 'Medium' ? 'Low' : 'Medium';
   }
 
   return {
@@ -110,6 +137,78 @@ export async function scanAsset(assetType, assetInput) {
     quantumRisk,
     details: selectedVulns,
     scannedAt: new Date().toISOString(),
-    scanId: `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    scanId: `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    confidence: Math.floor(Math.random() * 20) + 80, // 80-99% confidence
+    recommendations: generateRecommendations(selectedVulns, assetType)
   };
+}
+
+function generateRecommendations(vulnerabilities, assetType) {
+  const recommendations = [];
+  
+  const hasHighRisk = vulnerabilities.some(v => v.risk === 'High');
+  const hasMediumRisk = vulnerabilities.some(v => v.risk === 'Medium');
+  
+  if (hasHighRisk) {
+    recommendations.push('Immediate action required: Implement quantum-resistant cryptography');
+    recommendations.push('Consider migrating to post-quantum signature schemes');
+  }
+  
+  if (hasMediumRisk) {
+    recommendations.push('Plan for quantum-safe migration within 2-3 years');
+    recommendations.push('Monitor quantum computing developments closely');
+  }
+  
+  // Asset-specific recommendations
+  switch (assetType) {
+    case 'contract':
+      recommendations.push('Implement upgradeable contract patterns for future quantum resistance');
+      break;
+    case 'wallet':
+      recommendations.push('Use hardware wallets with quantum-resistant features');
+      break;
+    case 'nft':
+      recommendations.push('Consider decentralized metadata storage solutions');
+      break;
+    case 'app':
+      recommendations.push('Implement end-to-end encryption with quantum-safe algorithms');
+      break;
+    case 'memecoin':
+      recommendations.push('Evaluate consensus mechanism for quantum resistance');
+      break;
+  }
+  
+  return recommendations;
+}
+
+export function getAssetTypeInfo(assetType) {
+  const info = {
+    contract: {
+      name: 'Smart Contract',
+      description: 'Automated contracts running on blockchain',
+      riskFactors: ['ECDSA signatures', 'Hash functions', 'Key derivation']
+    },
+    wallet: {
+      name: 'Cryptocurrency Wallet',
+      description: 'Digital wallet for storing cryptocurrencies',
+      riskFactors: ['Private keys', 'Signature schemes', 'Key generation']
+    },
+    nft: {
+      name: 'Non-Fungible Token',
+      description: 'Unique digital assets on blockchain',
+      riskFactors: ['Metadata integrity', 'Ownership verification', 'Transfer mechanisms']
+    },
+    memecoin: {
+      name: 'Memecoin',
+      description: 'Community-driven cryptocurrency tokens',
+      riskFactors: ['Consensus mechanisms', 'Token economics', 'Network security']
+    },
+    app: {
+      name: 'Decentralized Application',
+      description: 'Applications running on blockchain networks',
+      riskFactors: ['Data encryption', 'User authentication', 'Communication protocols']
+    }
+  };
+  
+  return info[assetType] || { name: 'Unknown', description: '', riskFactors: [] };
 }

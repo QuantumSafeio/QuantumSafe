@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, getUserPoints, updateUserPoints, saveScanResult } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { scanAsset } from '../services/scanner';
+import { trackTweetEngagement } from '../services/twitter';
 import ScanResult from './ScanResult';
 
 export default function Dashboard() {
@@ -13,8 +14,9 @@ export default function Dashboard() {
   const [points, setPoints] = useState(0);
   const [refCopied, setRefCopied] = useState(false);
   const [scanHistory, setScanHistory] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
 
-  // تحميل نقاط المستخدم وتاريخ الفحص
+  // Load user data on component mount
   useEffect(() => {
     if (user?.id) {
       loadUserData();
@@ -23,11 +25,20 @@ export default function Dashboard() {
 
   const loadUserData = async () => {
     try {
-      // تحميل النقاط
+      // Load user points
       const userPoints = await getUserPoints(user.id);
       setPoints(userPoints);
 
-      // تحميل تاريخ الفحص
+      // Load user profile
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      setUserProfile(profile);
+
+      // Load scan history
       const { data: scans } = await supabase
         .from('scan_results')
         .select('*')
@@ -41,44 +52,44 @@ export default function Dashboard() {
     }
   };
 
-  // فحص الأصول
+  // Handle asset scanning
   const handleScan = async () => {
     if (points < 10) {
-      alert('ليس لديك نقاط كافية للفحص! تحتاج إلى 10 نقاط على الأقل.');
+      alert('Insufficient points! You need at least 10 points to scan.');
       return;
     }
 
     if (!assetInput.trim()) {
-      alert('يرجى إدخال عنوان الأصل أو البيانات.');
+      alert('Please enter an asset address or data to scan.');
       return;
     }
 
     setLoading(true);
     
     try {
-      // تنفيذ الفحص
+      // Perform the scan
       const result = await scanAsset(assetType, assetInput);
       setScanResult(result);
 
-      // حفظ نتيجة الفحص
+      // Save scan result
       await saveScanResult(user.id, result);
 
-      // خصم النقاط
+      // Deduct points
       const newPoints = points - 10;
       await updateUserPoints(user.id, newPoints);
       setPoints(newPoints);
 
-      // تحديث تاريخ الفحص
+      // Update scan history
       loadUserData();
     } catch (error) {
       console.error('Error during scan:', error);
-      alert('حدث خطأ أثناء الفحص. يرجى المحاولة مرة أخرى.');
+      alert('An error occurred during scanning. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // نسخ رابط الإحالة
+  // Copy referral link
   const handleCopyReferral = () => {
     const referralLink = `${window.location.origin}/login?ref=${user.id}`;
     navigator.clipboard.writeText(referralLink);
@@ -86,9 +97,24 @@ export default function Dashboard() {
     setTimeout(() => setRefCopied(false), 2000);
   };
 
-  // تسجيل الخروج
+  // Sign out
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Check tweet engagement and award points
+  const checkTweetEngagement = async () => {
+    try {
+      const engagement = await trackTweetEngagement(userProfile?.twitter_handle);
+      if (engagement.newPoints > 0) {
+        const newPoints = points + engagement.newPoints;
+        await updateUserPoints(user.id, newPoints);
+        setPoints(newPoints);
+        alert(`🎉 You earned ${engagement.newPoints} points from Twitter engagement!`);
+      }
+    } catch (error) {
+      console.error('Error checking tweet engagement:', error);
+    }
   };
 
   const getReferralLink = () => {
@@ -105,7 +131,7 @@ export default function Dashboard() {
         maxWidth: '1200px',
         margin: '0 auto'
       }}>
-        {/* الهيدر */}
+        {/* Header */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -127,7 +153,9 @@ export default function Dashboard() {
               🛡️ QuantumSafe
             </h1>
             <p style={{ margin: '5px 0 0 0', opacity: 0.8 }}>
-              مرحباً، {user?.email}
+              Welcome, {userProfile?.wallet_address ? 
+                `${userProfile.wallet_address.slice(0, 6)}...${userProfile.wallet_address.slice(-4)}` : 
+                user?.email}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -137,8 +165,24 @@ export default function Dashboard() {
               borderRadius: '25px',
               fontWeight: 'bold'
             }}>
-              💎 {points} نقطة
+              💎 {points} Points
             </div>
+            {userProfile?.twitter_handle && (
+              <button
+                onClick={checkTweetEngagement}
+                style={{
+                  padding: '10px 15px',
+                  background: 'rgba(29, 161, 242, 0.2)',
+                  border: '1px solid rgba(29, 161, 242, 0.5)',
+                  borderRadius: '10px',
+                  color: '#1da1f2',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                🐦 Check Engagement
+              </button>
+            )}
             <button
               onClick={handleSignOut}
               style={{
@@ -150,13 +194,13 @@ export default function Dashboard() {
                 cursor: 'pointer'
               }}
             >
-              تسجيل خروج
+              Sign Out
             </button>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' }}>
-          {/* قسم الفحص الرئيسي */}
+          {/* Main scanning section */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.1)',
             borderRadius: '20px',
@@ -164,12 +208,12 @@ export default function Dashboard() {
             backdropFilter: 'blur(10px)'
           }}>
             <h2 style={{ marginBottom: '25px', color: '#00f5ff' }}>
-              🔍 فحص الأصول الرقمية
+              🔍 Digital Asset Scanner
             </h2>
 
             <div style={{ marginBottom: '20px' }}>
               <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
-                نوع الأصل:
+                Asset Type:
               </label>
               <select
                 value={assetType}
@@ -184,21 +228,21 @@ export default function Dashboard() {
                   fontSize: '16px'
                 }}
               >
-                <option value="contract">عقد ذكي (Smart Contract)</option>
-                <option value="wallet">محفظة (Wallet)</option>
-                <option value="nft">رمز غير قابل للاستبدال (NFT)</option>
-                <option value="memecoin">عملة ميم (Memecoin)</option>
-                <option value="app">تطبيق لامركزي (DApp)</option>
+                <option value="contract">Smart Contract</option>
+                <option value="wallet">Wallet</option>
+                <option value="nft">NFT</option>
+                <option value="memecoin">Memecoin</option>
+                <option value="app">DApp</option>
               </select>
             </div>
 
             <div style={{ marginBottom: '25px' }}>
               <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
-                عنوان الأصل أو البيانات:
+                Asset Address or Data:
               </label>
               <input
                 type="text"
-                placeholder="أدخل عنوان الأصل أو البيانات المراد فحصها"
+                placeholder="Enter asset address or data to scan"
                 value={assetInput}
                 onChange={(e) => setAssetInput(e.target.value)}
                 style={{
@@ -231,10 +275,10 @@ export default function Dashboard() {
                 transition: 'all 0.3s ease'
               }}
             >
-              {loading ? '🔄 جاري الفحص...' : '🚀 ابدأ الفحص (10 نقاط)'}
+              {loading ? '🔄 Scanning...' : '🚀 Start Scan (10 Points)'}
             </button>
 
-            {/* نتيجة الفحص */}
+            {/* Scan result */}
             {scanResult && (
               <ScanResult 
                 result={scanResult} 
@@ -244,9 +288,9 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* الشريط الجانبي */}
+          {/* Sidebar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* رابط الإحالة */}
+            {/* Referral link */}
             <div style={{
               background: 'rgba(255, 255, 255, 0.1)',
               borderRadius: '15px',
@@ -254,7 +298,7 @@ export default function Dashboard() {
               backdropFilter: 'blur(10px)'
             }}>
               <h3 style={{ marginBottom: '15px', color: '#ff00ff' }}>
-                🎁 رابط الإحالة
+                🎁 Referral Link
               </h3>
               <input
                 type="text"
@@ -283,11 +327,11 @@ export default function Dashboard() {
                   cursor: 'pointer'
                 }}
               >
-                {refCopied ? '✅ تم النسخ!' : '📋 نسخ الرابط'}
+                {refCopied ? '✅ Copied!' : '📋 Copy Link'}
               </button>
             </div>
 
-            {/* إحصائيات سريعة */}
+            {/* Quick stats */}
             <div style={{
               background: 'rgba(255, 255, 255, 0.1)',
               borderRadius: '15px',
@@ -295,16 +339,22 @@ export default function Dashboard() {
               backdropFilter: 'blur(10px)'
             }}>
               <h3 style={{ marginBottom: '15px', color: '#00f5ff' }}>
-                📊 الإحصائيات
+                📊 Statistics
               </h3>
               <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
-                <p>🔍 عدد الفحوصات: {scanHistory.length}</p>
-                <p>💎 النقاط المتاحة: {points}</p>
-                <p>🎯 المستوى: {points > 100 ? 'متقدم' : points > 50 ? 'متوسط' : 'مبتدئ'}</p>
+                <p>🔍 Total Scans: {scanHistory.length}</p>
+                <p>💎 Available Points: {points}</p>
+                <p>🎯 Level: {points > 100 ? 'Advanced' : points > 50 ? 'Intermediate' : 'Beginner'}</p>
+                {userProfile?.wallet_address && (
+                  <p>🦊 Wallet: Connected</p>
+                )}
+                {userProfile?.twitter_handle && (
+                  <p>🐦 Twitter: @{userProfile.twitter_handle}</p>
+                )}
               </div>
             </div>
 
-            {/* تاريخ الفحص */}
+            {/* Scan history */}
             {scanHistory.length > 0 && (
               <div style={{
                 background: 'rgba(255, 255, 255, 0.1)',
@@ -313,7 +363,7 @@ export default function Dashboard() {
                 backdropFilter: 'blur(10px)'
               }}>
                 <h3 style={{ marginBottom: '15px', color: '#ff00ff' }}>
-                  📝 آخر الفحوصات
+                  📝 Recent Scans
                 </h3>
                 <div style={{ fontSize: '12px' }}>
                   {scanHistory.slice(0, 3).map((scan, index) => (
@@ -327,7 +377,7 @@ export default function Dashboard() {
                         {scan.asset_type} - {scan.quantum_risk}
                       </div>
                       <div style={{ opacity: 0.7 }}>
-                        {new Date(scan.created_at).toLocaleDateString('ar')}
+                        {new Date(scan.created_at).toLocaleDateString()}
                       </div>
                     </div>
                   ))}
@@ -337,7 +387,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* معلومات إضافية */}
+        {/* Additional info */}
         <div style={{
           marginTop: '30px',
           padding: '20px',
@@ -347,13 +397,13 @@ export default function Dashboard() {
           lineHeight: '1.6'
         }}>
           <h3 style={{ color: '#00f5ff', marginBottom: '15px' }}>
-            💡 كيفية كسب النقاط
+            💡 How to Earn Points
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-            <div>• كل 3 إعجابات أو إعادة تغريد = نقطة واحدة</div>
-            <div>• كل تعليق على تغريدتك = نقطة واحدة</div>
-            <div>• دعوة الأصدقاء = 10 نقاط لكل صديق</div>
-            <div>• التسجيل الجديد = 50 نقطة مجانية</div>
+            <div>• Every 3 likes or retweets = 1 point</div>
+            <div>• Every comment on your tweet = 1 point</div>
+            <div>• Invite friends = 10 points per friend</div>
+            <div>• New registration = 50 free points</div>
           </div>
         </div>
       </div>
