@@ -11,7 +11,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('خطأ في التطبيق:', error, errorInfo);
+    console.error('Application error:', error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -40,7 +40,7 @@ class ErrorBoundary extends React.Component {
               fontSize: '2rem',
               marginBottom: '20px'
             }}>
-              ⚠️ خطأ في التطبيق
+              ⚠️ Application Error
             </h1>
             <p style={{
               color: '#ffffff',
@@ -48,7 +48,7 @@ class ErrorBoundary extends React.Component {
               marginBottom: '20px',
               lineHeight: '1.6'
             }}>
-              حدث خطأ ما. يرجى المحاولة مرة أخرى أو إعادة تحميل الصفحة.
+              Something went wrong. Please try again or reload the page.
             </p>
             <details style={{
               color: 'rgba(255, 255, 255, 0.7)',
@@ -57,7 +57,7 @@ class ErrorBoundary extends React.Component {
               textAlign: 'left'
             }}>
               <summary style={{ cursor: 'pointer', marginBottom: '10px' }}>
-                تفاصيل الخطأ
+                Error Details
               </summary>
               <pre style={{
                 background: 'rgba(0, 0, 0, 0.3)',
@@ -83,7 +83,7 @@ class ErrorBoundary extends React.Component {
                 cursor: 'pointer'
               }}
             >
-              🔄 إعادة تحميل الصفحة
+              🔄 Reload Page
             </button>
           </div>
         </div>

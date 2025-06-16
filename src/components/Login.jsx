@@ -26,22 +26,27 @@ export default function Login() {
       const { address, signature } = await connectWallet();
       setWalletAddress(address);
       
-      // Create or get user with wallet address
-      const { data: existingUser, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('wallet_address', address)
-        .single();
+      // Create or get user with wallet address as unique identifier
+      const walletEmail = `${address.toLowerCase()}@quantumsafe.wallet`;
+      const walletPassword = `QS_${signature.slice(0, 32)}_${address.slice(-8)}`;
+      
+      // Try to sign in first
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: walletEmail,
+        password: walletPassword
+      });
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-
-      if (!existingUser) {
-        // Create new user
+      if (signInError && signInError.message.includes('Invalid login credentials')) {
+        // User doesn't exist, create new account
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: `${address}@wallet.local`,
-          password: signature.slice(0, 20) + 'QuantumSafe2024!'
+          email: walletEmail,
+          password: walletPassword,
+          options: {
+            data: {
+              wallet_address: address,
+              display_name: `Wallet ${address.slice(0, 6)}...${address.slice(-4)}`
+            }
+          }
         });
 
         if (authError) throw authError;
@@ -50,106 +55,77 @@ export default function Login() {
           // Create user profile
           await supabase.from('user_profiles').insert({
             user_id: authData.user.id,
-            wallet_address: address
+            wallet_address: address,
+            created_at: new Date().toISOString()
           });
 
           // Add initial points (5 points for new users)
           await supabase.from('user_points').insert({
             user_id: authData.user.id,
-            points: 5
+            points: 5,
+            created_at: new Date().toISOString()
           });
 
           // Handle referral if exists
           const storedReferral = localStorage.getItem('referral_code');
           if (storedReferral) {
-            await supabase.from('referrals').insert({
-              new_user_id: authData.user.id,
-              referrer_id: storedReferral,
-              points_awarded: 10
-            });
-            
-            // Award points to referrer
-            const { data: referrerPoints } = await supabase
-              .from('user_points')
-              .select('points')
-              .eq('user_id', storedReferral)
-              .single();
-            
-            if (referrerPoints) {
-              await supabase
+            try {
+              await supabase.from('referrals').insert({
+                new_user_id: authData.user.id,
+                referrer_id: storedReferral,
+                points_awarded: 10,
+                created_at: new Date().toISOString()
+              });
+              
+              // Award points to referrer
+              const { data: referrerPoints } = await supabase
                 .from('user_points')
-                .update({ points: referrerPoints.points + 10 })
-                .eq('user_id', storedReferral);
+                .select('points')
+                .eq('user_id', storedReferral)
+                .single();
+              
+              if (referrerPoints) {
+                await supabase
+                  .from('user_points')
+                  .update({ 
+                    points: referrerPoints.points + 10,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('user_id', storedReferral);
+
+                // Record referral transaction
+                await supabase.from('points_transactions').insert({
+                  user_id: storedReferral,
+                  points_change: 10,
+                  source: 'referral',
+                  metadata: {
+                    referred_user: authData.user.id,
+                    referred_wallet: address
+                  },
+                  created_at: new Date().toISOString()
+                });
+              }
+              
+              localStorage.removeItem('referral_code');
+            } catch (referralError) {
+              console.error('Referral processing error:', referralError);
+              // Don't fail the whole login for referral errors
             }
-            
-            localStorage.removeItem('referral_code');
           }
         }
-      } else {
-        // Sign in existing user
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: `${address}@wallet.local`,
-          password: signature.slice(0, 20) + 'QuantumSafe2024!'
-        });
-
-        if (signInError) throw signInError;
+      } else if (signInError) {
+        throw signInError;
       }
+
     } catch (err) {
       console.error('Wallet login error:', err);
-      setError(err.message || 'Failed to connect wallet');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmailLogin = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      // Simple email/password authentication
-      const email = prompt('Enter your email:');
-      const password = prompt('Enter your password:');
-      
-      if (!email || !password) {
-        throw new Error('Email and password are required');
+      if (err.message.includes('User rejected')) {
+        setError('Wallet connection was cancelled. Please try again.');
+      } else if (err.message.includes('MetaMask')) {
+        setError('MetaMask is required. Please install MetaMask and try again.');
+      } else {
+        setError(err.message || 'Failed to connect wallet. Please try again.');
       }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        // Try to sign up if user doesn't exist
-        if (error.message.includes('Invalid login credentials')) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password
-          });
-
-          if (signUpError) throw signUpError;
-
-          if (signUpData.user) {
-            // Create user profile
-            await supabase.from('user_profiles').insert({
-              user_id: signUpData.user.id,
-              created_at: new Date().toISOString()
-            });
-
-            // Add initial points
-            await supabase.from('user_points').insert({
-              user_id: signUpData.user.id,
-              points: 5
-            });
-          }
-        } else {
-          throw error;
-        }
-      }
-    } catch (err) {
-      console.error('Email login error:', err);
-      setError(err.message || 'Failed to login with email');
     } finally {
       setLoading(false);
     }
@@ -221,7 +197,7 @@ export default function Login() {
           color: '#ffffff',
           fontWeight: 'bold'
         }}>
-          Connect Your Account
+          Connect Your Web3 Wallet
         </h2>
 
         <p style={{
@@ -231,76 +207,11 @@ export default function Login() {
           fontSize: '16px',
           lineHeight: '1.5'
         }}>
-          Connect your wallet or use email to start scanning digital assets and earning rewards
+          Connect your Web3 wallet to start scanning digital assets and earning rewards. 
+          Secure, decentralized authentication powered by blockchain technology.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Email Login Button */}
-          <button
-            onClick={handleEmailLogin}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '18px',
-              border: 'none',
-              borderRadius: '15px',
-              background: loading 
-                ? 'rgba(0, 245, 255, 0.5)' 
-                : 'linear-gradient(45deg, #00f5ff, #0099cc)',
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              transition: 'all 0.3s ease',
-              boxShadow: loading ? 'none' : '0 4px 15px rgba(0, 245, 255, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 6px 20px rgba(0, 245, 255, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 4px 15px rgba(0, 245, 255, 0.3)';
-              }
-            }}
-          >
-            {loading ? (
-              <>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '2px solid rgba(255, 255, 255, 0.3)',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }} />
-                Connecting...
-              </>
-            ) : (
-              <>
-                📧 Login with Email
-              </>
-            )}
-          </button>
-
-          <div style={{
-            textAlign: 'center',
-            margin: '10px 0',
-            color: 'rgba(255, 255, 255, 0.6)',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}>
-            or
-          </div>
-
           {!isMetaMaskInstalled() ? (
             <div style={{
               width: '100%',
@@ -383,7 +294,7 @@ export default function Login() {
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }} />
-                  Connecting...
+                  Connecting Wallet...
                 </>
               ) : (
                 <>
@@ -411,7 +322,8 @@ export default function Login() {
               background: 'rgba(0, 0, 0, 0.3)',
               padding: '8px',
               borderRadius: '8px',
-              display: 'block'
+              display: 'block',
+              color: 'rgba(255, 255, 255, 0.9)'
             }}>
               {walletAddress}
             </code>
@@ -524,6 +436,17 @@ export default function Login() {
             <strong>Earn Rewards</strong>
             <br />
             <small>Points for scans, referrals & engagement</small>
+          </div>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            padding: '20px',
+            borderRadius: '15px',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🌐</div>
+            <strong>Web3 Native</strong>
+            <br />
+            <small>Fully decentralized authentication</small>
           </div>
         </div>
       </div>

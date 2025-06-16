@@ -53,10 +53,14 @@ export function useAuth() {
             
             if (!existingProfile) {
               // Create user profile if it doesn't exist
+              const walletAddress = session.user.user_metadata?.wallet_address || 
+                                  session.user.email?.split('@')[0];
+              
               await supabase
                 .from('user_profiles')
                 .insert({
                   user_id: session.user.id,
+                  wallet_address: walletAddress,
                   created_at: new Date().toISOString()
                 });
             }
@@ -75,6 +79,20 @@ export function useAuth() {
                 .insert({
                   user_id: session.user.id,
                   points: 5,
+                  created_at: new Date().toISOString()
+                });
+
+              // Record initial points transaction
+              await supabase
+                .from('points_transactions')
+                .insert({
+                  user_id: session.user.id,
+                  points_change: 5,
+                  source: 'welcome_bonus',
+                  metadata: {
+                    description: 'Welcome bonus for new users',
+                    wallet_address: session.user.user_metadata?.wallet_address
+                  },
                   created_at: new Date().toISOString()
                 });
             }
@@ -102,31 +120,9 @@ export function useAuth() {
     }
   };
 
-  const signInWithEmail = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
-    if (error) throw error;
-    return data;
-  };
-
-  const signUpWithEmail = async (email, password) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password
-    });
-    
-    if (error) throw error;
-    return data;
-  };
-
   return {
     user,
     loading,
-    signOut,
-    signInWithEmail,
-    signUpWithEmail
+    signOut
   };
 }
