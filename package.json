@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist node_modules/.cache .vite",
-    "optimize": "npm run clean && npm run build"
+    "optimize": "npm run clean && npm run build",
+    "deploy": "node deploy.js",
+    "predeploy": "npm run build"
   },
   "keywords": ["quantum", "blockchain", "security", "crypto", "web3"],
   "author": "QuantumSafe Team",
