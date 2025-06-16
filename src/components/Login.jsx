@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { connectWallet } from '../services/wallet';
-import { initiateTwitterAuth } from '../services/twitter';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -103,15 +102,54 @@ export default function Login() {
     }
   };
 
-  const handleTwitterLogin = async () => {
+  const handleEmailLogin = async () => {
     setLoading(true);
     setError('');
     
     try {
-      await initiateTwitterAuth();
+      // Simple email/password authentication
+      const email = prompt('Enter your email:');
+      const password = prompt('Enter your password:');
+      
+      if (!email || !password) {
+        throw new Error('Email and password are required');
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        // Try to sign up if user doesn't exist
+        if (error.message.includes('Invalid login credentials')) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password
+          });
+
+          if (signUpError) throw signUpError;
+
+          if (signUpData.user) {
+            // Create user profile
+            await supabase.from('user_profiles').insert({
+              user_id: signUpData.user.id,
+              created_at: new Date().toISOString()
+            });
+
+            // Add initial points
+            await supabase.from('user_points').insert({
+              user_id: signUpData.user.id,
+              points: 5
+            });
+          }
+        } else {
+          throw error;
+        }
+      }
     } catch (err) {
-      console.error('Twitter login error:', err);
-      setError(err.message || 'Failed to connect Twitter');
+      console.error('Email login error:', err);
+      setError(err.message || 'Failed to login with email');
     } finally {
       setLoading(false);
     }
@@ -193,10 +231,76 @@ export default function Login() {
           fontSize: '16px',
           lineHeight: '1.5'
         }}>
-          Connect your wallet or Twitter to start scanning digital assets and earning rewards
+          Connect your wallet or use email to start scanning digital assets and earning rewards
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Email Login Button */}
+          <button
+            onClick={handleEmailLogin}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '18px',
+              border: 'none',
+              borderRadius: '15px',
+              background: loading 
+                ? 'rgba(0, 245, 255, 0.5)' 
+                : 'linear-gradient(45deg, #00f5ff, #0099cc)',
+              color: 'white',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              transition: 'all 0.3s ease',
+              boxShadow: loading ? 'none' : '0 4px 15px rgba(0, 245, 255, 0.3)'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 6px 20px rgba(0, 245, 255, 0.4)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 15px rgba(0, 245, 255, 0.3)';
+              }
+            }}
+          >
+            {loading ? (
+              <>
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid rgba(255, 255, 255, 0.3)',
+                  borderTop: '2px solid white',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                Connecting...
+              </>
+            ) : (
+              <>
+                📧 Login with Email
+              </>
+            )}
+          </button>
+
+          <div style={{
+            textAlign: 'center',
+            margin: '10px 0',
+            color: 'rgba(255, 255, 255, 0.6)',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}>
+            or
+          </div>
+
           {!isMetaMaskInstalled() ? (
             <div style={{
               width: '100%',
@@ -288,71 +392,6 @@ export default function Login() {
               )}
             </button>
           )}
-
-          <div style={{
-            textAlign: 'center',
-            margin: '10px 0',
-            color: 'rgba(255, 255, 255, 0.6)',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}>
-            or
-          </div>
-
-          <button
-            onClick={handleTwitterLogin}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '18px',
-              border: 'none',
-              borderRadius: '15px',
-              background: loading 
-                ? 'rgba(29, 161, 242, 0.5)' 
-                : 'linear-gradient(45deg, #1da1f2, #0d8bd9)',
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              transition: 'all 0.3s ease',
-              boxShadow: loading ? 'none' : '0 4px 15px rgba(29, 161, 242, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 6px 20px rgba(29, 161, 242, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 4px 15px rgba(29, 161, 242, 0.3)';
-              }
-            }}
-          >
-            {loading ? (
-              <>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '2px solid rgba(255, 255, 255, 0.3)',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }} />
-                Connecting...
-              </>
-            ) : (
-              <>
-                🐦 Connect Twitter Account
-              </>
-            )}
-          </button>
         </div>
 
         {walletAddress && (
