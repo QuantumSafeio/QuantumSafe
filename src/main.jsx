@@ -1,9 +1,9 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
+الاستيراد React from 'react'
+import ReactDOM from الاستيراد  
+الاستيراد App التطبيق './App'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+رد....createRoot.....document.....getElementById..............'root'.....).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  <رد...
 )
