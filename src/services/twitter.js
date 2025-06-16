@@ -1,16 +1,12 @@
-// Twitter API configuration
+// Enhanced Twitter API service with improved points system
 const TWITTER_API_KEY = 'a53CYhaKrHlDQmXLJ9odT0a2g';
 const TWITTER_API_SECRET = 'I6SYOWLUzPaj9cnwM7ZPtyY3J4Shqp8h70tkPBIAM0kM7tG9Zl';
 const TWITTER_BEARER_TOKEN = 'AAAAAAAAAAAAAAAAAAAAAJQ82QEAAAAAE7fW6XZRMK4KtaMLLFjXwSZKtXY%3DOrU8SwpMJ8NJAkUCeSAOz7rkUqzO3SUmGkJxSZuM3Lv1QMNcyJ';
 
-// Twitter OAuth endpoints
-const TWITTER_AUTH_URL = 'https://api.twitter.com/oauth/request_token';
 const TWITTER_CALLBACK_URL = `${window.location.origin}/auth/twitter/callback`;
 
 export async function initiateTwitterAuth() {
   try {
-    // For now, we'll use a simple popup-based OAuth flow
-    // In production, you'd want to implement proper OAuth 2.0 PKCE flow
     const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${TWITTER_API_KEY}&redirect_uri=${encodeURIComponent(TWITTER_CALLBACK_URL)}&scope=tweet.read%20users.read%20follows.read&state=state&code_challenge=challenge&code_challenge_method=plain`;
     
     const popup = window.open(authUrl, 'twitter-auth', 'width=600,height=600');
@@ -23,7 +19,6 @@ export async function initiateTwitterAuth() {
         }
       }, 1000);
 
-      // Listen for message from popup
       window.addEventListener('message', (event) => {
         if (event.origin !== window.location.origin) return;
         
@@ -45,27 +40,27 @@ export async function initiateTwitterAuth() {
 }
 
 export async function shareOnTwitter(scanResult, assetType, user) {
-  const text = `🛡️ QuantumSafe scan result for ${assetType}:
+  const text = `🛡️ QuantumSafe scan completed for ${assetType}:
 
 🎯 Quantum Threat Level: ${scanResult.quantumRisk}
 🔍 Asset: ${scanResult.asset.slice(0, 20)}...
+⚡ Vulnerabilities Found: ${scanResult.details.length}
 
-Scanned with QuantumSafe 🚀
+Protect your digital assets with QuantumSafe 🚀
 ${window.location.origin}/login?ref=${user?.id}
 
-#QuantumSafe #BlockchainSecurity #QuantumThreat`;
+#QuantumSafe #BlockchainSecurity #QuantumThreat #CryptoSecurity`;
 
-  // Open Twitter intent URL
   const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
   window.open(tweetUrl, '_blank');
   
-  // Store tweet info for later tracking
   const tweetData = {
     userId: user?.id,
     content: text,
     assetType,
     scanId: scanResult.scanId,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    basePoints: 1 // 1 point for posting tweet
   };
   
   localStorage.setItem(`tweet_${Date.now()}`, JSON.stringify(tweetData));
@@ -79,32 +74,35 @@ export async function trackTweetEngagement(twitterHandle) {
   }
 
   try {
-    // This would typically call your backend API to check tweet engagement
-    // For now, we'll simulate the engagement tracking
-    
-    // In a real implementation, you would:
-    // 1. Get recent tweets from the user
-    // 2. Check engagement metrics (likes, retweets, comments)
-    // 3. Calculate points based on engagement
-    // 4. Return the points earned
-    
+    // Simulate engagement tracking with new points system
     const mockEngagement = {
-      likes: Math.floor(Math.random() * 10),
-      retweets: Math.floor(Math.random() * 5),
-      comments: Math.floor(Math.random() * 3)
+      tweets: Math.floor(Math.random() * 5) + 1, // 1-5 tweets
+      likes: Math.floor(Math.random() * 21), // 0-20 likes
+      retweets: Math.floor(Math.random() * 14), // 0-13 retweets
+      comments: Math.floor(Math.random() * 9) // 0-8 comments
     };
     
-    // Calculate points: Every 3 likes/retweets = 1 point, every comment = 1 point
-    const pointsFromLikesRetweets = Math.floor((mockEngagement.likes + mockEngagement.retweets) / 3);
-    const pointsFromComments = mockEngagement.comments;
-    const totalNewPoints = pointsFromLikesRetweets + pointsFromComments;
+    // New points calculation system:
+    // - 1 point per tweet
+    // - 0.5 points per 7 likes/retweets
+    // - 0.5 points per 3 comments
+    const pointsFromTweets = mockEngagement.tweets * 1;
+    const pointsFromLikesRetweets = Math.floor((mockEngagement.likes + mockEngagement.retweets) / 7) * 0.5;
+    const pointsFromComments = Math.floor(mockEngagement.comments / 3) * 0.5;
+    const totalNewPoints = pointsFromTweets + pointsFromLikesRetweets + pointsFromComments;
     
     return {
       engagement: mockEngagement,
-      newPoints: totalNewPoints,
+      newPoints: Math.round(totalNewPoints * 10) / 10, // Round to 1 decimal place
       breakdown: {
-        likesRetweets: pointsFromLikesRetweets,
-        comments: pointsFromComments
+        tweets: pointsFromTweets,
+        likesRetweets: Math.round(pointsFromLikesRetweets * 10) / 10,
+        comments: Math.round(pointsFromComments * 10) / 10
+      },
+      details: {
+        tweetsCount: mockEngagement.tweets,
+        totalLikesRetweets: mockEngagement.likes + mockEngagement.retweets,
+        commentsCount: mockEngagement.comments
       }
     };
   } catch (error) {
@@ -115,11 +113,21 @@ export async function trackTweetEngagement(twitterHandle) {
 
 export async function getUserTweets(twitterHandle, count = 10) {
   try {
-    // This would call Twitter API v2 to get user tweets
-    // For now, return mock data
+    // Mock implementation - in production, use Twitter API v2
+    const mockTweets = Array.from({ length: Math.min(count, 5) }, (_, i) => ({
+      id: `tweet_${Date.now()}_${i}`,
+      text: `Sample tweet ${i + 1} about quantum security`,
+      created_at: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+      public_metrics: {
+        like_count: Math.floor(Math.random() * 10),
+        retweet_count: Math.floor(Math.random() * 5),
+        reply_count: Math.floor(Math.random() * 3)
+      }
+    }));
+
     return {
-      tweets: [],
-      count: 0
+      tweets: mockTweets,
+      count: mockTweets.length
     };
   } catch (error) {
     console.error('Error fetching user tweets:', error);
@@ -129,13 +137,12 @@ export async function getUserTweets(twitterHandle, count = 10) {
 
 export async function getTweetMetrics(tweetId) {
   try {
-    // This would call Twitter API v2 to get tweet metrics
-    // For now, return mock data
+    // Mock implementation - in production, use Twitter API v2
     return {
-      likes: 0,
-      retweets: 0,
-      comments: 0,
-      views: 0
+      likes: Math.floor(Math.random() * 20),
+      retweets: Math.floor(Math.random() * 10),
+      comments: Math.floor(Math.random() * 5),
+      views: Math.floor(Math.random() * 100) + 50
     };
   } catch (error) {
     console.error('Error fetching tweet metrics:', error);
