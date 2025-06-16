@@ -1,9 +1,9 @@
 import React from 'react'
-import ReactDOM from 'react-dom/client'
+import رد فعل  DOM فعل DOM from "رد فعل دوم / عميل"
 import App from './App'
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+رد فعل DOMفعل  DOM.createRoot(document.الحصول على الحصول على ElementById('root')).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </رد  فعل. فعل..StrictMode>
 )
