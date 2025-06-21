@@ -30,6 +30,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",
+    "react-toastify": "^11.0.5",
     "terser": "^5.30.3",
     "web3modal": "^1.9.12"
   },
