@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { nhost } from '../lib/nhost';
 import { connectWallet } from '../services/wallet';
+import { signInWithEmailPassword, signUpWithEmailPassword } from '../hooks/nhostAuth';
+import WalletSecurityScanner from './WalletSecurityScanner';
 
-export default function Login() {
+export default function Login(props) {
   const [loading, setLoading] = useState(false);
-  const [walletAddress, setWalletAddress] = useState('');
+  const [walletAddress, setWalletAddress] = useState("");
+  const [networkSymbol, setNetworkSymbol] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [connectedWalletAddress, setConnectedWalletAddress] = useState("");
+  const [connectedNetworkSymbol, setConnectedNetworkSymbol] = useState("");
 
   useEffect(() => {
     // Check for referral code in URL
@@ -18,110 +24,46 @@ export default function Login() {
     }
   }, []);
 
+  useEffect(() => {
+    // For demo: set values after wallet connection (replace with real logic)
+    if (!connectedWalletAddress) {
+      setConnectedWalletAddress("0x1234abcd5678efgh9012ijkl3456mnop7890qrst");
+    }
+    if (!connectedNetworkSymbol) {
+      setConnectedNetworkSymbol("ETH");
+    }
+  }, [connectedWalletAddress, connectedNetworkSymbol]);
+
   const handleWalletLogin = async () => {
     setLoading(true);
     setError('');
-    
     try {
       const { address, signature } = await connectWallet();
       setWalletAddress(address);
-      
-      // Create or get user with wallet address as unique identifier
       const walletEmail = `${address.toLowerCase()}@quantumsafe.wallet`;
       const walletPassword = `QS_${signature.slice(0, 32)}_${address.slice(-8)}`;
-      
       // Try to sign in first
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: walletEmail,
-        password: walletPassword
-      });
-
-      if (signInError && signInError.message.includes('Invalid login credentials')) {
-        // User doesn't exist, create new account
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: walletEmail,
-          password: walletPassword,
-          options: {
-            data: {
-              wallet_address: address,
-              display_name: `Wallet ${address.slice(0, 6)}...${address.slice(-4)}`
-            }
-          }
-        });
-
-        if (authError) throw authError;
-
-        if (authData.user) {
-          // Create user profile
-          await supabase.from('user_profiles').insert({
-            user_id: authData.user.id,
-            wallet_address: address,
-            created_at: new Date().toISOString()
-          });
-
-          // Add initial points (5 points for new users)
-          await supabase.from('user_points').insert({
-            user_id: authData.user.id,
-            points: 5,
-            created_at: new Date().toISOString()
-          });
-
-          // Handle referral if exists
-          const storedReferral = localStorage.getItem('referral_code');
-          if (storedReferral) {
-            try {
-              await supabase.from('referrals').insert({
-                new_user_id: authData.user.id,
-                referrer_id: storedReferral,
-                points_awarded: 10,
-                created_at: new Date().toISOString()
-              });
-              
-              // Award points to referrer
-              const { data: referrerPoints } = await supabase
-                .from('user_points')
-                .select('points')
-                .eq('user_id', storedReferral)
-                .single();
-              
-              if (referrerPoints) {
-                await supabase
-                  .from('user_points')
-                  .update({ 
-                    points: referrerPoints.points + 10,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('user_id', storedReferral);
-
-                // Record referral transaction
-                await supabase.from('points_transactions').insert({
-                  user_id: storedReferral,
-                  points_change: 10,
-                  source: 'referral',
-                  metadata: {
-                    referred_user: authData.user.id,
-                    referred_wallet: address
-                  },
-                  created_at: new Date().toISOString()
-                });
-              }
-              
-              localStorage.removeItem('referral_code');
-            } catch (referralError) {
-              console.error('Referral processing error:', referralError);
-              // Don't fail the whole login for referral errors
-            }
-          }
-        }
-      } else if (signInError) {
-        throw signInError;
+      let session, signInError;
+      try {
+        ({ session, error: signInError } = await signInWithEmailPassword(walletEmail, walletPassword));
+      } catch (e) {
+        signInError = e;
       }
-
+      if (!session) {
+        // If sign in fails, try to sign up
+        const { session: signUpSession, error: signUpError } = await signUpWithEmailPassword(walletEmail, walletPassword);
+        if (signUpError) throw signUpError;
+        if (signUpSession?.user) {
+          await insertUserProfile(signUpSession.user.id, address);
+          await insertUserPoints(signUpSession.user.id, 5);
+          // Handle referral (you can convert this to GraphQL later)
+        }
+      }
     } catch (err) {
       console.error('Wallet login error:', err);
-      if (err.message.includes('User rejected')) {
+      if (err.message && err.message.includes('User rejected')) {
         setError('Wallet connection was cancelled. Please try again.');
-      } else if (err.message.includes('MetaMask')) {
+      } else if (err.message && err.message.includes('MetaMask')) {
         setError('MetaMask is required. Please install MetaMask and try again.');
       } else {
         setError(err.message || 'Failed to connect wallet. Please try again.');
@@ -131,9 +73,72 @@ export default function Login() {
     }
   };
 
+  async function handleConnectWallet() {
+    setIsConnecting(true);
+    setError("");
+    try {
+      let actualWalletAddress = "";
+      let actualNetworkSymbol = "";
+      if (window.ethereum) {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        actualWalletAddress = accounts[0];
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        switch (chainId) {
+          case '0x1':
+            actualNetworkSymbol = 'ETH';
+            break;
+          case '0x89':
+            actualNetworkSymbol = 'MATIC';
+            break;
+          case '0x38':
+            actualNetworkSymbol = 'BNB';
+            break;
+          default:
+            actualNetworkSymbol = 'ETH';
+        }
+      } else {
+        actualWalletAddress = "";
+        actualNetworkSymbol = "ETH";
+      }
+      setWalletAddress(actualWalletAddress);
+      setNetworkSymbol(actualNetworkSymbol);
+      setIsConnecting(false);
+    } catch (err) {
+      setError("Wallet connection failed. Please try again.");
+      setIsConnecting(false);
+    }
+  };
+
   const isMetaMaskInstalled = () => {
     return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
   };
+
+  // GraphQL helper
+  async function gqlRequest(query, variables) {
+    return nhost.graphql.request(query, variables);
+  }
+
+  // Example: Insert user profile
+  async function insertUserProfile(user_id, wallet_address) {
+    const query = `mutation InsertUserProfile($user_id: uuid!, $wallet_address: String!) {
+      insert_user_profiles_one(object: {user_id: $user_id, wallet_address: $wallet_address}) {
+        user_id
+        wallet_address
+      }
+    }`;
+    return gqlRequest(query, { user_id, wallet_address });
+  }
+
+  // Example: Insert user points
+  async function insertUserPoints(user_id, points) {
+    const query = `mutation InsertUserPoints($user_id: uuid!, $points: Int!) {
+      insert_user_points_one(object: {user_id: $user_id, points: $points}) {
+        user_id
+        points
+      }
+    }`;
+    return gqlRequest(query, { user_id, points });
+  }
 
   return (
     <div style={{
@@ -248,87 +253,89 @@ export default function Login() {
               </a>
             </div>
           ) : (
-            <button
-              onClick={handleWalletLogin}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '18px',
-                border: 'none',
-                borderRadius: '15px',
-                background: loading 
-                  ? 'rgba(246, 133, 27, 0.5)' 
-                  : 'linear-gradient(45deg, #f6851b, #e76f00)',
-                color: 'white',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                transition: 'all 0.3s ease',
-                boxShadow: loading ? 'none' : '0 4px 15px rgba(246, 133, 27, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 6px 20px rgba(246, 133, 27, 0.4)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 4px 15px rgba(246, 133, 27, 0.3)';
-                }
-              }}
-            >
-              {loading ? (
-                <>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    border: '2px solid rgba(255, 255, 255, 0.3)',
-                    borderTop: '2px solid white',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }} />
-                  Connecting Wallet...
-                </>
+            <>
+              {!walletAddress ? (
+                <button
+                  onClick={handleConnectWallet}
+                  disabled={isConnecting}
+                  style={{
+                    width: '100%',
+                    padding: '18px',
+                    border: 'none',
+                    borderRadius: '15px',
+                    background: isConnecting 
+                      ? 'rgba(246, 133, 27, 0.5)' 
+                      : 'linear-gradient(45deg, #f6851b, #e76f00)',
+                    color: 'white',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    cursor: isConnecting ? 'not-allowed' : 'pointer',
+                    opacity: isConnecting ? 0.7 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px',
+                    transition: 'all 0.3s ease',
+                    boxShadow: isConnecting ? 'none' : '0 4px 15px rgba(246, 133, 27, 0.3)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isConnecting) {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 6px 20px rgba(246, 133, 27, 0.4)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isConnecting) {
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = '0 4px 15px rgba(246, 133, 27, 0.3)';
+                    }
+                  }}
+                >
+                  {isConnecting ? (
+                    <>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        border: '2px solid rgba(255, 255, 255, 0.3)',
+                        borderTop: '2px solid white',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                      }} />
+                      Connecting Wallet...
+                    </>
+                  ) : (
+                    <>
+                      🦊 Connect MetaMask Wallet
+                    </>
+                  )}
+                </button>
               ) : (
-                <>
-                  🦊 Connect MetaMask Wallet
-                </>
+                <div style={{
+                  marginTop: '25px',
+                  padding: '20px',
+                  background: 'rgba(0, 255, 0, 0.1)',
+                  borderRadius: '15px',
+                  border: '1px solid rgba(0, 255, 0, 0.3)'
+                }}>
+                  <p style={{ fontSize: '16px', color: '#00ff88', marginBottom: '8px', fontWeight: 'bold' }}>
+                    ✅ Wallet Connected Successfully
+                  </p>
+                  <code style={{ 
+                    fontSize: '13px', 
+                    wordBreak: 'break-all',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    display: 'block',
+                    color: 'rgba(255, 255, 255, 0.9)'
+                  }}>
+                    {walletAddress}
+                  </code>
+                </div>
               )}
-            </button>
+            </>
           )}
         </div>
-
-        {walletAddress && (
-          <div style={{
-            marginTop: '25px',
-            padding: '20px',
-            background: 'rgba(0, 255, 0, 0.1)',
-            borderRadius: '15px',
-            border: '1px solid rgba(0, 255, 0, 0.3)'
-          }}>
-            <p style={{ fontSize: '16px', color: '#00ff88', marginBottom: '8px', fontWeight: 'bold' }}>
-              ✅ Wallet Connected Successfully
-            </p>
-            <code style={{ 
-              fontSize: '13px', 
-              wordBreak: 'break-all',
-              background: 'rgba(0, 0, 0, 0.3)',
-              padding: '8px',
-              borderRadius: '8px',
-              display: 'block',
-              color: 'rgba(255, 255, 255, 0.9)'
-            }}>
-              {walletAddress}
-            </code>
-          </div>
-        )}
 
         {error && (
           <div style={{
@@ -379,6 +386,17 @@ export default function Login() {
             <br />
             <small style={{ opacity: 0.8 }}>You'll get bonus points when you sign up!</small>
           </div>
+        )}
+
+        {/* Show WalletSecurityScanner only if wallet is connected */}
+        {walletAddress && networkSymbol && (
+          <>
+            <h2 style={{color:'#4f8cff', marginTop:'32px', marginBottom:'16px'}}>Scan your wallet</h2>
+            <WalletSecurityScanner
+              walletAddress={walletAddress}
+              networkKey={networkSymbol}
+            />
+          </>
         )}
       </div>
 
@@ -451,7 +469,7 @@ export default function Login() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }

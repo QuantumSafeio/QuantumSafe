@@ -1,0 +1,3 @@
+// Backup of old supabase.js before deletion
+import { nhost } from './nhost';
+export { nhost };

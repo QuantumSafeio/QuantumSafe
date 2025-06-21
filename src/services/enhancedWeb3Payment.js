@@ -1,16 +1,35 @@
 // Enhanced multi-chain Web3 payment service
 import { multiChainWallet, SUPPORTED_NETWORKS } from './multiChainWallet';
-import { supabase } from '../lib/supabase';
+import axios from 'axios';
 
 // Cryptocurrency prices (should be fetched from real API)
-const CRYPTO_PRICES = {
-  ETH: 2000,
-  MATIC: 0.8,
-  BNB: 300,
-  SOL: 20,
-  BTC: 43000,
-  SUI: 1.5
-};
+const CRYPTO_API_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,polygon,binancecoin,solana,bitcoin,sui&vs_currencies=usd';
+
+async function fetchCryptoPrices() {
+  try {
+    const response = await axios.get(CRYPTO_API_URL);
+    const prices = response.data;
+    return {
+      ETH: prices.ethereum.usd,
+      MATIC: prices.polygon.usd,
+      BNB: prices.binancecoin.usd,
+      SOL: prices.solana.usd,
+      BTC: prices.bitcoin.usd,
+      SUI: prices.sui.usd
+    };
+  } catch (error) {
+    console.error('Failed to fetch crypto prices:', error);
+    // fallback to static prices if API fails
+    return {
+      ETH: 2000,
+      MATIC: 0.8,
+      BNB: 300,
+      SOL: 20,
+      BTC: 43000,
+      SUI: 1.5
+    };
+  }
+}
 
 // Service types and their costs
 export const ENHANCED_SERVICE_TYPES = {
@@ -58,21 +77,18 @@ class EnhancedWeb3PaymentService {
   }
 
   // Calculate payment amount in cryptocurrency
-  calculateCryptoAmount(serviceType, networkKey) {
+  async calculateCryptoAmount(serviceType, networkKey) {
     const service = ENHANCED_SERVICE_TYPES[serviceType];
     const network = SUPPORTED_NETWORKS[networkKey];
-    
     if (!service || !network) {
       throw new Error('Invalid service type or network');
     }
-
-    const cryptoPrice = CRYPTO_PRICES[network.symbol];
+    const cryptoPrices = await fetchCryptoPrices();
+    const cryptoPrice = cryptoPrices[network.symbol];
     if (!cryptoPrice) {
       throw new Error('Price not available for this cryptocurrency');
     }
-
     const amountInCrypto = service.cost / cryptoPrice;
-    
     return {
       amountUSD: service.cost,
       amountCrypto: amountInCrypto,
@@ -107,20 +123,25 @@ class EnhancedWeb3PaymentService {
       }
 
       // Create payment record in database
-      const { data: payment, error } = await supabase
-        .from('payments')
-        .insert({
-          user_id: userId,
-          network: networkKey,
-          from_address: walletConnection.address,
-          to_address: network.address,
-          amount: paymentDetails.amountCrypto,
-          currency: network.symbol,
-          status: 'pending',
-          service_type: serviceType
-        })
-        .select()
-        .single();
+      const { data: payment, error } = await nhost.graphql.request(
+        `mutation ($input: payments_insert_input!) {
+          insert_payments_one(object: $input) {
+            id
+          }
+        }`,
+        {
+          input: {
+            user_id: userId,
+            network: networkKey,
+            from_address: walletConnection.address,
+            to_address: network.address,
+            amount: paymentDetails.amountCrypto,
+            currency: network.symbol,
+            status: 'pending',
+            service_type: serviceType
+          }
+        }
+      );
 
       if (error) throw error;
 
@@ -132,13 +153,17 @@ class EnhancedWeb3PaymentService {
       );
 
       // Update payment record with transaction hash
-      await supabase
-        .from('payments')
-        .update({ 
-          transaction_hash: transactionResult.hash,
-          status: 'submitted'
-        })
-        .eq('id', payment.id);
+      await nhost.graphql.request(
+        `mutation ($id: uuid!, $hash: String!) {
+          update_payments_by_pk(pk_columns: {id: $id}, _set: {transaction_hash: $hash, status: "submitted"}) {
+            id
+          }
+        }`,
+        {
+          id: payment.id,
+          hash: transactionResult.hash
+        }
+      );
 
       // Start verification process
       this.startVerificationProcess(transactionResult.hash, payment.id, networkKey);
@@ -165,28 +190,43 @@ class EnhancedWeb3PaymentService {
         const isConfirmed = await this.verifyTransaction(txHash, networkKey);
         
         if (isConfirmed) {
-          await supabase
-            .from('payments')
-            .update({ 
-              status: 'confirmed',
-              verified_at: new Date().toISOString()
-            })
-            .eq('id', paymentId);
+          await nhost.graphql.request(
+            `mutation ($id: uuid!) {
+              update_payments_by_pk(pk_columns: {id: $id}, _set: {status: "confirmed", verified_at: "now()"}) {
+                id
+              }
+            }`,
+            {
+              id: paymentId
+            }
+          );
 
           // Process successful payment
           await this.processSuccessfulPayment(paymentId);
         } else {
-          await supabase
-            .from('payments')
-            .update({ status: 'failed' })
-            .eq('id', paymentId);
+          await nhost.graphql.request(
+            `mutation ($id: uuid!) {
+              update_payments_by_pk(pk_columns: {id: $id}, _set: {status: "failed"}) {
+                id
+              }
+            }`,
+            {
+              id: paymentId
+            }
+          );
         }
       } catch (error) {
         console.error('Verification error:', error);
-        await supabase
-          .from('payments')
-          .update({ status: 'verification_failed' })
-          .eq('id', paymentId);
+        await nhost.graphql.request(
+          `mutation ($id: uuid!) {
+            update_payments_by_pk(pk_columns: {id: $id}, _set: {status: "verification_failed"}) {
+              id
+            }
+          }`,
+          {
+            id: paymentId
+          }
+        );
       }
     }, 30000); // Wait 30 seconds before verification
   }
@@ -230,11 +270,22 @@ class EnhancedWeb3PaymentService {
   // Process successful payment
   async processSuccessfulPayment(paymentId) {
     try {
-      const { data: payment } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('id', paymentId)
-        .single();
+      const { data: payment } = await nhost.graphql.request(
+        `query ($id: uuid!) {
+          payments_by_pk(id: $id) {
+            id
+            user_id
+            service_type
+            transaction_hash
+            network
+            amount
+            currency
+          }
+        }`,
+        {
+          id: paymentId
+        }
+      );
 
       if (!payment) return;
 
@@ -244,38 +295,54 @@ class EnhancedWeb3PaymentService {
       const scanCredits = Math.floor(service.cost / 100); // 1 point per $100
       
       // Update user points
-      const { data: currentPoints } = await supabase
-        .from('user_points')
-        .select('points')
-        .eq('user_id', payment.user_id)
-        .single();
+      const { data: currentPoints } = await nhost.graphql.request(
+        `query ($userId: uuid!) {
+          user_points(where: {user_id: {_eq: $userId}}) {
+            points
+          }
+        }`,
+        {
+          userId: payment.user_id
+        }
+      );
 
-      const newPoints = (currentPoints?.points || 0) + scanCredits;
+      const newPoints = (currentPoints?.[0]?.points || 0) + scanCredits;
       
-      await supabase
-        .from('user_points')
-        .upsert({
-          user_id: payment.user_id,
-          points: newPoints,
-          updated_at: new Date().toISOString()
-        });
+      await nhost.graphql.request(
+        `mutation ($userId: uuid!, $points: Int!) {
+          insert_user_points_one(object: {user_id: $userId, points: $points, updated_at: "now()"} on_conflict: {constraint: user_points_pkey, update_columns: points}) {
+            id
+          }
+        }`,
+        {
+          userId: payment.user_id,
+          points: newPoints
+        }
+      );
 
       // Record points transaction
-      await supabase
-        .from('points_transactions')
-        .insert({
-          user_id: payment.user_id,
-          points_change: scanCredits,
-          source: 'crypto_payment',
-          metadata: {
-            payment_id: paymentId,
-            service_type: payment.service_type,
-            transaction_hash: payment.transaction_hash,
-            network: payment.network,
-            amount: payment.amount,
-            currency: payment.currency
+      await nhost.graphql.request(
+        `mutation ($input: points_transactions_insert_input!) {
+          insert_points_transactions_one(object: $input) {
+            id
           }
-        });
+        }`,
+        {
+          input: {
+            user_id: payment.user_id,
+            points_change: scanCredits,
+            source: 'crypto_payment',
+            metadata: {
+              payment_id: paymentId,
+              service_type: payment.service_type,
+              transaction_hash: payment.transaction_hash,
+              network: payment.network,
+              amount: payment.amount,
+              currency: payment.currency
+            }
+          }
+        }
+      );
 
       console.log(`Payment processed successfully. Awarded ${scanCredits} points to user ${payment.user_id}`);
       
@@ -286,11 +353,25 @@ class EnhancedWeb3PaymentService {
 
   // Get payment history
   async getUserPayments(userId) {
-    const { data: payments, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const { data: payments, error } = await nhost.graphql.request(
+      `query ($userId: uuid!) {
+        payments(where: {user_id: {_eq: $userId}}, order_by: {created_at: desc}) {
+          id
+          network
+          from_address
+          to_address
+          amount
+          currency
+          status
+          service_type
+          created_at
+          transaction_hash
+        }
+      }`,
+      {
+        userId
+      }
+    );
 
     if (error) throw error;
     return payments;
@@ -298,11 +379,19 @@ class EnhancedWeb3PaymentService {
 
   // Check payment status
   async checkPaymentStatus(paymentId) {
-    const { data: payment, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('id', paymentId)
-      .single();
+    const { data: payment, error } = await nhost.graphql.request(
+      `query ($id: uuid!) {
+        payments_by_pk(id: $id) {
+          id
+          status
+          transaction_hash
+          verified_at
+        }
+      }`,
+      {
+        id: paymentId
+      }
+    );
 
     if (error) throw error;
     return payment;
@@ -344,4 +433,24 @@ export function getWalletInstallUrl(walletType) {
     sui: 'https://chrome.google.com/webstore/detail/sui-wallet/opcgpfmipidbgpenhmajoajpbobppdil'
   };
   return urls[walletType] || '#';
+}
+
+// GraphQL helper
+async function gqlRequest(query, variables) {
+  return nhost.graphql.request(query, variables);
+}
+
+// Example: Insert payment
+async function insertPayment(data) {
+  const query = `mutation InsertPayment($object: payments_insert_input!) {
+    insert_payments_one(object: $object) {
+      id
+      user_id
+      amount
+      currency
+      status
+      service_type
+    }
+  }`;
+  return gqlRequest(query, { object: data });
 }

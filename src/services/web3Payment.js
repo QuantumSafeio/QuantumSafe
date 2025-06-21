@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { supabase } from '../lib/supabase';
+import { nhost } from '../lib/nhost';
 
 // Network configurations
 export const PAYMENT_NETWORKS = {
@@ -140,22 +140,16 @@ class Web3PaymentService {
     const userAddress = await this.signer.getAddress();
     
     // Create payment record in database
-    const { data: payment, error } = await supabase
-      .from('payments')
-      .insert({
-        user_id: userId,
-        network: networkKey,
-        from_address: userAddress,
-        to_address: network.address,
-        amount: paymentDetails.amountCrypto,
-        currency: network.symbol,
-        status: 'pending',
-        service_type: serviceType
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
+    const payment = await this.insertPayment({
+      user_id: userId,
+      network: networkKey,
+      from_address: userAddress,
+      to_address: network.address,
+      amount: paymentDetails.amountCrypto,
+      currency: network.symbol,
+      status: 'pending',
+      service_type: serviceType
+    });
 
     try {
       // Send transaction
@@ -166,13 +160,14 @@ class Web3PaymentService {
       });
 
       // Update payment with transaction hash
-      await supabase
-        .from('payments')
-        .update({ 
-          transaction_hash: tx.hash,
-          status: 'submitted'
-        })
-        .eq('id', payment.id);
+      await nhost.graphql.request(
+        `mutation UpdatePayment($id: uuid!, $transactionHash: String!) {
+          update_payments_by_pk(pk_columns: {id: $id}, _set: {transaction_hash: $transactionHash, status: "submitted"}) {
+            id
+          }
+        }`,
+        { id: payment.id, transactionHash: tx.hash }
+      );
 
       // Start verification process
       this.verifyTransaction(tx.hash, payment.id, networkKey);
@@ -186,10 +181,14 @@ class Web3PaymentService {
 
     } catch (txError) {
       // Update payment status to failed
-      await supabase
-        .from('payments')
-        .update({ status: 'failed' })
-        .eq('id', payment.id);
+      await nhost.graphql.request(
+        `mutation UpdatePaymentStatus($id: uuid!) {
+          update_payments_by_pk(pk_columns: {id: $id}, _set: {status: "failed"}) {
+            id
+          }
+        }`,
+        { id: payment.id }
+      );
       
       throw txError;
     }
@@ -206,13 +205,14 @@ class Web3PaymentService {
       
       if (receipt && receipt.status === 1) {
         // Transaction successful
-        await supabase
-          .from('payments')
-          .update({ 
-            status: 'confirmed',
-            verified_at: new Date().toISOString()
-          })
-          .eq('id', paymentId);
+        await nhost.graphql.request(
+          `mutation UpdatePaymentStatus($id: uuid!) {
+            update_payments_by_pk(pk_columns: {id: $id}, _set: {status: "confirmed", verified_at: "now()"}) {
+              id
+            }
+          }`,
+          { id: paymentId }
+        );
 
         // Award service access or points
         await this.processSuccessfulPayment(paymentId);
@@ -220,19 +220,27 @@ class Web3PaymentService {
         return true;
       } else {
         // Transaction failed
-        await supabase
-          .from('payments')
-          .update({ status: 'failed' })
-          .eq('id', paymentId);
+        await nhost.graphql.request(
+          `mutation UpdatePaymentStatus($id: uuid!) {
+            update_payments_by_pk(pk_columns: {id: $id}, _set: {status: "failed"}) {
+              id
+            }
+          }`,
+          { id: paymentId }
+        );
         
         return false;
       }
     } catch (error) {
       console.error('Transaction verification error:', error);
-      await supabase
-        .from('payments')
-        .update({ status: 'verification_failed' })
-        .eq('id', paymentId);
+      await nhost.graphql.request(
+        `mutation UpdatePaymentStatus($id: uuid!) {
+          update_payments_by_pk(pk_columns: {id: $id}, _set: {status: "verification_failed"}) {
+            id
+          }
+        }`,
+        { id: paymentId }
+      );
       
       return false;
     }
@@ -242,11 +250,17 @@ class Web3PaymentService {
   async processSuccessfulPayment(paymentId) {
     try {
       // Get payment details
-      const { data: payment } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('id', paymentId)
-        .single();
+      const { data: payment } = await nhost.graphql.request(
+        `query GetPayment($id: uuid!) {
+          payments_by_pk(id: $id) {
+            id
+            user_id
+            service_type
+            transaction_hash
+          }
+        }`,
+        { id: paymentId }
+      );
 
       if (!payment) return;
 
@@ -257,26 +271,38 @@ class Web3PaymentService {
         // Award scan credits
         const scanCredits = Math.floor(service.cost / 100); // 1 credit per $100
         
-        await supabase
-          .from('user_points')
-          .update({ 
-            points: supabase.raw('points + ?', [scanCredits])
-          })
-          .eq('user_id', payment.user_id);
+        await nhost.graphql.request(
+          `mutation UpdateUserPoints($userId: uuid!, $credits: Int!) {
+            update_user_points(where: {user_id: {_eq: $userId}}, _inc: {points: $credits}) {
+              affected_rows
+            }
+          }`,
+          { userId: payment.user_id, credits: scanCredits }
+        );
 
         // Record transaction
-        await supabase
-          .from('points_transactions')
-          .insert({
-            user_id: payment.user_id,
-            points_change: scanCredits,
-            source: 'payment',
-            metadata: {
-              payment_id: paymentId,
-              service_type: payment.service_type,
-              transaction_hash: payment.transaction_hash
+        await nhost.graphql.request(
+          `mutation InsertPointsTransaction($userId: uuid!, $credits: Int!, $paymentId: uuid!, $transactionHash: String!) {
+            insert_points_transactions_one(object: {
+              user_id: $userId,
+              points_change: $credits,
+              source: "payment",
+              metadata: {
+                payment_id: $paymentId,
+                service_type: payment.service_type,
+                transaction_hash: $transactionHash
+              }
+            }) {
+              id
             }
-          });
+          }`,
+          { 
+            userId: payment.user_id, 
+            credits: scanCredits, 
+            paymentId: paymentId, 
+            transactionHash: payment.transaction_hash 
+          }
+        );
       }
 
       // Send notification (implement notification service)
@@ -295,11 +321,19 @@ class Web3PaymentService {
 
   // Get user payment history
   async getUserPayments(userId) {
-    const { data: payments, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const { data: payments, error } = await nhost.graphql.request(
+      `query GetUserPayments($userId: uuid!) {
+        payments(where: {user_id: {_eq: $userId}}, order_by: {created_at: desc}) {
+          id
+          amount
+          currency
+          status
+          service_type
+          created_at
+        }
+      }`,
+      { userId }
+    );
 
     if (error) throw error;
     return payments;
@@ -307,14 +341,38 @@ class Web3PaymentService {
 
   // Check payment status
   async checkPaymentStatus(paymentId) {
-    const { data: payment, error } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('id', paymentId)
-      .single();
+    const { data: payment, error } = await nhost.graphql.request(
+      `query GetPayment($id: uuid!) {
+        payments_by_pk(id: $id) {
+          id
+          status
+        }
+      }`,
+      { id: paymentId }
+    );
 
     if (error) throw error;
     return payment;
+  }
+
+  // GraphQL helper
+  async gqlRequest(query, variables) {
+    return nhost.graphql.request(query, variables);
+  }
+
+  // Example: Insert payment
+  async insertPayment(data) {
+    const query = `mutation InsertPayment($object: payments_insert_input!) {
+      insert_payments_one(object: $object) {
+        id
+        user_id
+        amount
+        currency
+        status
+        service_type
+      }
+    }`;
+    return this.gqlRequest(query, { object: data });
   }
 }
 
