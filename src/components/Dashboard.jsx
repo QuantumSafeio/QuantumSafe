@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
+import { nhost } from '../lib/nhost';
 import { scanAsset } from '../services/scanner';
 import ScanResult from './ScanResult';
 import PromoTweets from './PromoTweets';
 import MultiChainPaymentModal from './MultiChainPaymentModal';
+import WalletSecurityScanner from './WalletSecurityScanner';
+import { Web3Modal } from 'web3modal';
+import { ethers } from 'ethers';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-export default function Dashboard() {
+// --- Web3Modal Integration ---
+
+export default function Dashboard(props) {
   const { user, signOut } = useAuth();
   const [userProfile, setUserProfile] = useState(null);
   const [userPoints, setUserPoints] = useState(0);
@@ -37,12 +44,73 @@ export default function Dashboard() {
     riskReduction: 0
   });
 
+  // Wallet connection state
+  const [connectedWalletAddress, setConnectedWalletAddress] = useState('');
+  const [connectedNetworkSymbol, setConnectedNetworkSymbol] = useState('');
+
+  // Web3Modal state
+  const [web3Provider, setWeb3Provider] = useState(null);
+  const [web3Address, setWeb3Address] = useState('');
+  const [web3Network, setWeb3Network] = useState('');
+
+  // Connect wallet handler
+  const handleConnectWallet = async () => {
+    try {
+      const web3modal = new Web3Modal({
+        cacheProvider: true,
+        providerOptions: {}
+      });
+      const instance = await web3modal.connect();
+      const provider = new ethers.providers.Web3Provider(instance);
+      const signer = provider.getSigner();
+      const address = await signer.getAddress();
+      const network = await provider.getNetwork();
+      setWeb3Provider(provider);
+      console.log('Web3Provider set:', provider);
+      setWeb3Address(address);
+      setWeb3Network(network.name.toUpperCase());
+    } catch (err) {
+      alert('Wallet connection cancelled or failed.');
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchUserData();
       generateReferralLink();
     }
   }, [user]);
+
+  useEffect(() => {
+    const initWeb3 = async () => {
+      try {
+        const web3modal = new Web3Modal({
+          cacheProvider: true,
+          providerOptions: {}
+        });
+        const instance = await web3modal.connect();
+        const provider = new ethers.providers.Web3Provider(instance);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        const network = await provider.getNetwork();
+        setWeb3Provider(provider);
+        setWeb3Address(address);
+        setWeb3Network(network.name.toUpperCase());
+      } catch (err) {
+        // fallback to old logic if user cancels
+      }
+    };
+    initWeb3();
+  }, []);
+
+  useEffect(() => {
+    if (!web3Provider && (web3Address || web3Network)) {
+      setWeb3Address('');
+      setWeb3Network('');
+      setCurrentScanResult(null);
+      toast.warn('Wallet disconnected. Please reconnect your wallet.');
+    }
+  }, [web3Provider]);
 
   const generateReferralLink = () => {
     const baseUrl = window.location.origin + window.location.pathname;
@@ -65,7 +133,7 @@ export default function Dashboard() {
         setTimeout(() => reject(new Error('Request timeout')), 15000)
       );
 
-      const profilePromise = supabase
+      const profilePromise = nhost
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.id)
@@ -74,7 +142,7 @@ export default function Dashboard() {
       const { data: profile } = await Promise.race([profilePromise, timeout]);
       setUserProfile(profile);
 
-      const pointsPromise = supabase
+      const pointsPromise = nhost
         .from('user_points')
         .select('points')
         .eq('user_id', user.id)
@@ -83,7 +151,7 @@ export default function Dashboard() {
       const { data: points } = await Promise.race([pointsPromise, timeout]);
       setUserPoints(points?.points || 0);
 
-      const scansPromise = supabase
+      const scansPromise = nhost
         .from('scan_results')
         .select('*')
         .eq('user_id', user.id)
@@ -148,27 +216,23 @@ export default function Dashboard() {
       const scanPromise = scanAsset(selectedAssetType, assetInput.trim());
       const result = await Promise.race([scanPromise, scanTimeout]);
       
-      const { data: scanData, error: scanError } = await supabase
-        .from('scan_results')
-        .insert({
-          user_id: user.id,
-          asset_type: selectedAssetType,
-          asset_address: assetInput.trim(),
-          quantum_risk: result.quantumRisk.toLowerCase(),
-          vulnerabilities: result.details,
-          scanned_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      const { data: scanData, error: scanError } = await insertScanResult({
+        user_id: user.id,
+        asset_type: selectedAssetType,
+        asset_address: assetInput.trim(),
+        quantum_risk: result.quantumRisk.toLowerCase(),
+        vulnerabilities: result.details,
+        scanned_at: new Date().toISOString()
+      });
 
       if (scanError) throw scanError;
 
-      await supabase
+      await nhost
         .from('user_points')
         .update({ points: userPoints - 10 })
         .eq('user_id', user.id);
 
-      await supabase
+      await nhost
         .from('points_transactions')
         .insert({
           user_id: user.id,
@@ -185,7 +249,7 @@ export default function Dashboard() {
       setCurrentScanResult(result);
       
       if (userProfile) {
-        await supabase
+        await nhost
           .from('user_profiles')
           .update({ 
             total_scans: (userProfile.total_scans || 0) + 1,
@@ -261,12 +325,6 @@ export default function Dashboard() {
         }}>
           Loading QuantumSafe Dashboard...
         </div>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     );
   }
@@ -741,7 +799,7 @@ export default function Dashboard() {
                 color: '#6b7280'
               }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-                <h3 style={{ fontSize: '18px', margin: '0 0 8px 0', color: '#111827' }}>
+                <h3 style={{ fontSize: '18px', margin: 0, color: '#111827' }}>
                   No Scans Yet
                 </h3>
                 <p style={{ fontSize: '14px', margin: 0 }}>
@@ -801,19 +859,63 @@ export default function Dashboard() {
           serviceType={selectedService}
           onPaymentSuccess={handlePaymentSuccess}
         />
+
+        {/* Wallet Security Scanner */}
+        {web3Address && web3Network && (
+          <div style={{ marginTop: '32px' }}>
+            <h2 style={{ color: '#4f8cff', marginBottom: '16px' }}>Scan your wallet</h2>
+            <WalletSecurityScanner
+              walletAddress={web3Address}
+              networkKey={web3Network}
+              provider={web3Provider}
+            />
+          </div>
+        )}
+
+        {/* Wallet Connect Button */}
+        {!web3Address && (
+          <div style={{ textAlign: 'center', margin: '32px 0' }}>
+            <button
+              onClick={handleConnectWallet}
+              style={{
+                padding: '16px 32px',
+                fontSize: '18px',
+                borderRadius: '10px',
+                background: 'linear-gradient(90deg, #4f8cff, #52c41a)',
+                color: '#fff',
+                fontWeight: 'bold',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px #4f8cff33'
+              }}
+            >
+              Connect Wallet
+            </button>
+          </div>
+        )}
       </div>
 
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
+      <ToastContainer position="top-center" autoClose={4000} hideProgressBar newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
     </div>
   );
+}
+
+// GraphQL helper
+async function gqlRequest(query, variables) {
+  return nhost.graphql.request(query, variables);
+}
+
+// Example: Insert scan result
+async function insertScanResult(data) {
+  const query = `mutation InsertScanResult($object: scan_results_insert_input!) {
+    insert_scan_results_one(object: $object) {
+      id
+      asset_type
+      asset_address
+      quantum_risk
+      vulnerabilities
+      scanned_at
+    }
+  }`;
+  return gqlRequest(query, { object: data });
 }
