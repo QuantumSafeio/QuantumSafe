@@ -378,31 +378,53 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
       justify-content: center; z-index: 10000;
     `;
     
-    modal.innerHTML = `
-      <div style="background: white; padding: 32px; border-radius: 16px; max-width: 400px; text-align: center;">
-        <h3 style="margin: 0 0 16px 0; color: #1f2937;">Complete Payment</h3>
-        <p style="margin: 0 0 16px 0; color: #6b7280;">Send exactly <strong>${cryptoAmount} ${network.symbol}</strong> to:</p>
-        <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0; word-break: break-all; font-family: monospace; font-size: 12px;">
-          ${network.address}
-        </div>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-          <button onclick="navigator.clipboard.writeText('${network.address}'); alert('Address copied!')" 
-                  style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-            Copy Address
-          </button>
-          <button onclick="this.parentElement.parentElement.parentElement.remove(); setPaymentSuccess(true);" 
-                  style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">
-            Payment Sent
-          </button>
-          <button onclick="this.parentElement.parentElement.parentElement.remove()" 
-                  style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
-            Cancel
-          </button>
-        </div>
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white; padding: 32px; border-radius: 16px; 
+      max-width: 400px; text-align: center;
+    `;
+    
+    modalContent.innerHTML = `
+      <h3 style="margin: 0 0 16px 0; color: #1f2937;">Complete Payment</h3>
+      <p style="margin: 0 0 16px 0; color: #6b7280;">Send exactly <strong>${cryptoAmount} ${network.symbol}</strong> to:</p>
+      <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0; word-break: break-all; font-family: monospace; font-size: 12px;">
+        ${network.address}
+      </div>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button id="copyBtn" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+          Copy Address
+        </button>
+        <button id="paymentSentBtn" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">
+          Payment Sent
+        </button>
+        <button id="cancelBtn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+          Cancel
+        </button>
       </div>
     `;
     
+    modal.appendChild(modalContent);
     document.body.appendChild(modal);
+    
+    // Add event listeners
+    const copyBtn = modalContent.querySelector('#copyBtn');
+    const paymentSentBtn = modalContent.querySelector('#paymentSentBtn');
+    const cancelBtn = modalContent.querySelector('#cancelBtn');
+    
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(network.address);
+      alert('Address copied!');
+    });
+    
+    paymentSentBtn.addEventListener('click', () => {
+      document.body.removeChild(modal);
+      setPaymentSuccess(true);
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
     setPaying(false);
   };
 
