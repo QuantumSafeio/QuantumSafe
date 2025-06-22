@@ -30,21 +30,9 @@ export default function Dashboard(props) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState('');
 
-  // Enhanced Referral & Ambassador state
+  // Referral state
   const [referralLink, setReferralLink] = useState('');
   const [copied, setCopied] = useState(false);
-  const [referralStats, setReferralStats] = useState({
-    totalReferrals: 0,
-    totalEarned: 0,
-    activeReferrals: 0
-  });
-  const [ambassadorTier, setAmbassadorTier] = useState('none');
-  const [pointsBreakdown, setPointsBreakdown] = useState({
-    social: 0,
-    referral: 0,
-    scan: 0,
-    total: 0
-  });
 
   // Analytics state
   const [analytics, setAnalytics] = useState({
@@ -54,173 +42,33 @@ export default function Dashboard(props) {
     riskReduction: 0
   });
 
-  // Enhanced wallet connection state
+  // Wallet connection state
   const [connectedWalletAddress, setConnectedWalletAddress] = useState('');
   const [connectedNetworkSymbol, setConnectedNetworkSymbol] = useState('');
+
+  // Web3Modal state
   const [web3Provider, setWeb3Provider] = useState(null);
   const [web3Address, setWeb3Address] = useState('');
   const [web3Network, setWeb3Network] = useState('');
-  const [currentNetworkType, setCurrentNetworkType] = useState('ETH');
-  const [walletConnecting, setWalletConnecting] = useState(false);
 
-  // Network configurations for real wallet integration
-  const SUPPORTED_NETWORKS = {
-    ETH: {
-      name: 'Ethereum',
-      symbol: 'ETH',
-      chainId: 1,
-      rpcUrl: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
-      icon: '⟠'
-    },
-    MATIC: {
-      name: 'Polygon',
-      symbol: 'MATIC', 
-      chainId: 137,
-      rpcUrl: 'https://polygon-rpc.com',
-      icon: '⬟'
-    },
-    BNB: {
-      name: 'BSC',
-      symbol: 'BNB',
-      chainId: 56,
-      rpcUrl: 'https://bsc-dataseed.binance.org',
-      icon: '🟡'
-    }
-  };
-
-  // Enhanced wallet connection with real network detection
+  // Connect wallet handler
   const handleConnectWallet = async () => {
-    if (walletConnecting) return;
-    
-    setWalletConnecting(true);
     try {
-      if (!window.ethereum) {
-        toast.error('MetaMask is required. Please install MetaMask from metamask.io');
-        return;
-      }
-
-      // Request account access
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-
       const web3modal = new Web3Modal({
         cacheProvider: true,
         providerOptions: {}
       });
-      
       const instance = await web3modal.connect();
-      const provider = new ethers.BrowserProvider(instance);
-      const signer = await provider.getSigner();
+      const provider = new ethers.providers.Web3Provider(instance);
+      const signer = provider.getSigner();
       const address = await signer.getAddress();
       const network = await provider.getNetwork();
-      
-      // Detect actual network
-      let networkSymbol = 'ETH';
-      let networkName = 'Ethereum';
-      
-      switch (Number(network.chainId)) {
-        case 1:
-          networkSymbol = 'ETH';
-          networkName = 'Ethereum';
-          break;
-        case 137:
-          networkSymbol = 'MATIC';
-          networkName = 'Polygon';
-          break;
-        case 56:
-          networkSymbol = 'BNB';
-          networkName = 'BSC';
-          break;
-        default:
-          networkSymbol = 'ETH';
-          networkName = 'Ethereum';
-      }
-      
       setWeb3Provider(provider);
+      console.log('Web3Provider set:', provider);
       setWeb3Address(address);
-      setWeb3Network(networkSymbol);
-      setCurrentNetworkType(networkSymbol);
-      setConnectedWalletAddress(address);
-      setConnectedNetworkSymbol(networkSymbol);
-      
-      toast.success(`Connected to ${networkName} network`);
-      
-      // Listen for network and account changes
-      if (window.ethereum) {
-        window.ethereum.on('chainChanged', handleChainChanged);
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-      }
-      
+      setWeb3Network(network.name.toUpperCase());
     } catch (err) {
-      console.error('Wallet connection error:', err);
-      if (err.code === 4001) {
-        toast.warn('Wallet connection cancelled by user');
-      } else if (err.code === -32002) {
-        toast.warn('MetaMask is already processing a request. Please check MetaMask.');
-      } else {
-        toast.error('Failed to connect wallet. Please try again.');
-      }
-    } finally {
-      setWalletConnecting(false);
-    }
-  };
-
-  // Handle network changes
-  const handleChainChanged = async (chainId) => {
-    try {
-      const chainIdNum = parseInt(chainId, 16);
-      let networkSymbol = 'ETH';
-      let networkName = 'Ethereum';
-      
-      switch (chainIdNum) {
-        case 1:
-          networkSymbol = 'ETH';
-          networkName = 'Ethereum';
-          break;
-        case 137:
-          networkSymbol = 'MATIC';
-          networkName = 'Polygon';
-          break;
-        case 56:
-          networkSymbol = 'BNB';
-          networkName = 'BSC';
-          break;
-        default:
-          networkSymbol = 'ETH';
-          networkName = 'Ethereum';
-      }
-      
-      setWeb3Network(networkSymbol);
-      setCurrentNetworkType(networkSymbol);
-      setConnectedNetworkSymbol(networkSymbol);
-      
-      // Update provider
-      if (web3Provider) {
-        const newProvider = new ethers.BrowserProvider(window.ethereum);
-        setWeb3Provider(newProvider);
-      }
-      
-      toast.info(`Switched to ${networkName} network`);
-    } catch (error) {
-      console.error('Error handling chain change:', error);
-    }
-  };
-
-  // Handle account changes
-  const handleAccountsChanged = async (accounts) => {
-    if (accounts.length === 0) {
-      // User disconnected wallet
-      setWeb3Provider(null);
-      setWeb3Address('');
-      setWeb3Network('');
-      setConnectedWalletAddress('');
-      setConnectedNetworkSymbol('');
-      setCurrentNetworkType('ETH');
-      toast.warn('Wallet disconnected');
-    } else {
-      // User switched accounts
-      setWeb3Address(accounts[0]);
-      setConnectedWalletAddress(accounts[0]);
-      toast.info('Account switched');
+      alert('Wallet connection cancelled or failed.');
     }
   };
 
@@ -228,102 +76,50 @@ export default function Dashboard(props) {
     if (user) {
       fetchUserData();
       generateReferralLink();
-      fetchReferralStats();
-      fetchAmbassadorData();
     }
   }, [user]);
 
   useEffect(() => {
-    // Auto-connect if previously connected
     const initWeb3 = async () => {
       try {
-        if (window.ethereum && window.ethereum.selectedAddress) {
-          await handleConnectWallet();
-        }
+        const web3modal = new Web3Modal({
+          cacheProvider: true,
+          providerOptions: {}
+        });
+        const instance = await web3modal.connect();
+        const provider = new ethers.providers.Web3Provider(instance);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        const network = await provider.getNetwork();
+        setWeb3Provider(provider);
+        setWeb3Address(address);
+        setWeb3Network(network.name.toUpperCase());
       } catch (err) {
-        console.log('Auto-connect failed:', err);
+        // fallback to old logic if user cancels
       }
     };
     initWeb3();
-
-    // Cleanup event listeners
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      }
-    };
   }, []);
 
-  const generateReferralLink = () => {
-    if (user?.id && web3Address) {
-      const baseUrl = 'https://quantumsafeio.github.io/QuantumSafe/';
-      const link = `${baseUrl}?ref=${user.id}&wallet=${web3Address}`;
-      setReferralLink(link);
-    } else if (user?.id) {
-      const baseUrl = 'https://quantumsafeio.github.io/QuantumSafe/';
-      const link = `${baseUrl}?ref=${user.id}`;
-      setReferralLink(link);
-    }
-  };
-
-  // Update referral link when wallet connects
   useEffect(() => {
-    if (user?.id) {
-      generateReferralLink();
+    if (!web3Provider && (web3Address || web3Network)) {
+      setWeb3Address('');
+      setWeb3Network('');
+      setCurrentScanResult(null);
+      toast.warn('Wallet disconnected. Please reconnect your wallet.');
     }
-  }, [user?.id, web3Address]);
+  }, [web3Provider]);
+
+  const generateReferralLink = () => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const link = `${baseUrl}?ref=${user?.id}`;
+    setReferralLink(link);
+  };
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
-    toast.success('Referral link copied to clipboard!');
     setTimeout(() => setCopied(false), 2000);
-  };
-
-  const fetchReferralStats = async () => {
-    try {
-      // Fetch referral statistics
-      const { data: referrals } = await supabase
-        .from('referrals')
-        .select('*')
-        .eq('referrer_id', user.id);
-
-      const totalReferrals = referrals?.length || 0;
-      const totalEarned = referrals?.reduce((sum, ref) => sum + (ref.total_earned || 0), 0) || 0;
-      const activeReferrals = referrals?.filter(ref => ref.is_active !== false).length || 0;
-
-      setReferralStats({
-        totalReferrals,
-        totalEarned,
-        activeReferrals
-      });
-    } catch (error) {
-      console.error('Error fetching referral stats:', error);
-    }
-  };
-
-  const fetchAmbassadorData = async () => {
-    try {
-      // Fetch user points breakdown
-      const { data: pointsData } = await supabase
-        .from('user_points')
-        .select('points, social_media_points, referral_points, scan_points, ambassador_tier')
-        .eq('user_id', user.id)
-        .single();
-
-      if (pointsData) {
-        setPointsBreakdown({
-          social: pointsData.social_media_points || 0,
-          referral: pointsData.referral_points || 0,
-          scan: pointsData.scan_points || 0,
-          total: pointsData.points || 0
-        });
-        setAmbassadorTier(pointsData.ambassador_tier || 'none');
-      }
-    } catch (error) {
-      console.error('Error fetching ambassador data:', error);
-    }
   };
 
   const fetchUserData = async () => {
@@ -397,12 +193,12 @@ export default function Dashboard(props) {
 
   const handleScan = async () => {
     if (!assetInput.trim()) {
-      toast.error('Please enter an asset address to scan');
+      alert('Please enter an asset address to scan');
       return;
     }
 
     if (userPoints < 10) {
-      toast.error('You need at least 10 points to perform a scan');
+      alert('You need at least 10 points to perform a scan');
       return;
     }
 
@@ -415,13 +211,7 @@ export default function Dashboard(props) {
         setTimeout(() => reject(new Error('Scan timeout')), 30000)
       );
 
-      // Pass wallet and network info for unique scanning
-      const scanPromise = scanAsset(
-        selectedAssetType, 
-        assetInput.trim(),
-        web3Address || connectedWalletAddress,
-        currentNetworkType
-      );
+      const scanPromise = scanAsset(selectedAssetType, assetInput.trim(), web3Address, web3Network);
       const result = await Promise.race([scanPromise, scanTimeout]);
       
       const { data: scanData, error: scanError } = await supabase
@@ -439,20 +229,23 @@ export default function Dashboard(props) {
 
       if (scanError) throw scanError;
 
-      // Award points using the new system
-      await supabase.rpc('award_points', {
-        user_uuid: user.id,
-        points_amount: -10,
-        point_source: 'scan',
-        point_platform: 'app',
-        point_metadata: {
-          asset_type: selectedAssetType,
-          asset_address: assetInput.trim(),
-          scan_id: scanData.id,
-          network_type: currentNetworkType,
-          wallet_address: web3Address || connectedWalletAddress
-        }
-      });
+      await supabase
+        .from('user_points')
+        .update({ points: userPoints - 10 })
+        .eq('user_id', user.id);
+
+      await supabase
+        .from('points_transactions')
+        .insert({
+          user_id: user.id,
+          points_change: -10,
+          source: 'scan',
+          metadata: {
+            asset_type: selectedAssetType,
+            asset_address: assetInput.trim(),
+            scan_id: scanData.id
+          }
+        });
 
       setUserPoints(prev => prev - 10);
       setCurrentScanResult(result);
@@ -473,14 +266,10 @@ export default function Dashboard(props) {
       }
 
       fetchUserData();
-      fetchReferralStats();
-      fetchAmbassadorData();
-      toast.success('Scan completed successfully!');
       
     } catch (error) {
       console.error('Scan error:', error);
       setError('Failed to perform scan. Please try again.');
-      toast.error('Scan failed. Please try again.');
     } finally {
       setScanning(false);
     }
@@ -493,10 +282,7 @@ export default function Dashboard(props) {
 
   const handlePaymentSuccess = (paymentResult) => {
     console.log('Payment successful:', paymentResult);
-    toast.success('Payment completed successfully!');
     fetchUserData();
-    fetchReferralStats();
-    fetchAmbassadorData();
   };
 
   const assetTypes = [
@@ -509,19 +295,11 @@ export default function Dashboard(props) {
 
   const tabs = [
     { id: 'scanner', label: 'Quantum Scanner', icon: '🔍' },
-    { id: 'points', label: 'Points & Rewards', icon: '💎' },
-    { id: 'referrals', label: 'Referral System', icon: '🔗' },
-    { id: 'ambassador', label: 'Ambassador Program', icon: '👑' },
-    { id: 'history', label: 'Scan History', icon: '📋' }
+    { id: 'analytics', label: 'Security Analytics', icon: '📊' },
+    { id: 'history', label: 'Scan History', icon: '📋' },
+    { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' },
+    { id: 'marketing', label: 'Marketing & Promotion', icon: '🚀' }
   ];
-
-  // Ambassador tier configurations
-  const ambassadorTiers = {
-    none: { name: 'Member', icon: '👤', color: '#6B7280', requirements: 'Join the community' },
-    bronze: { name: 'Bronze Ambassador', icon: '🥉', color: '#CD7F32', requirements: '10+ referrals, 500+ points, 5+ social posts' },
-    silver: { name: 'Silver Ambassador', icon: '🥈', color: '#C0C0C0', requirements: '25+ referrals, 1500+ points, 15+ social posts' },
-    gold: { name: 'Gold Ambassador', icon: '🥇', color: '#FFD700', requirements: '50+ referrals, 5000+ points, 30+ social posts' }
-  };
 
   if (loading) {
     return (
@@ -531,19 +309,19 @@ export default function Dashboard(props) {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
+        background: '#f9fafb',
         gap: '20px'
       }}>
         <div style={{
           width: '60px',
           height: '60px',
-          border: '4px solid rgba(0, 245, 255, 0.3)',
-          borderTop: '4px solid #00f5ff',
+          border: '4px solid #e5e7eb',
+          borderTop: '4px solid #6366f1',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
         <div style={{
-          color: '#00f5ff',
+          color: '#6366f1',
           fontSize: '18px',
           fontWeight: '600'
         }}>
@@ -561,26 +339,26 @@ export default function Dashboard(props) {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
+        background: '#f9fafb',
         padding: '20px',
         textAlign: 'center'
       }}>
         <div style={{
-          background: 'rgba(255, 0, 0, 0.1)',
-          border: '2px solid rgba(255, 0, 0, 0.3)',
+          background: '#fef2f2',
+          border: '2px solid #fecaca',
           borderRadius: '15px',
           padding: '30px',
           maxWidth: '500px'
         }}>
           <h1 style={{
-            color: '#ff4757',
+            color: '#dc2626',
             fontSize: '2rem',
             marginBottom: '20px'
           }}>
             ⚠️ Loading Error
           </h1>
           <p style={{
-            color: '#ffffff',
+            color: '#111827',
             fontSize: '16px',
             marginBottom: '20px',
             lineHeight: '1.6'
@@ -591,7 +369,7 @@ export default function Dashboard(props) {
             onClick={() => window.location.reload()}
             style={{
               padding: '12px 24px',
-              background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
+              background: '#6366f1',
               border: 'none',
               borderRadius: '10px',
               color: 'white',
@@ -610,180 +388,59 @@ export default function Dashboard(props) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: '#ffffff'
+      background: '#f9fafb',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      {/* Professional Header */}
+      {/* Header */}
       <div style={{
-        background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'white',
+        borderBottom: '1px solid #e5e7eb',
         padding: '16px 24px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
       }}>
         <div style={{
-          maxWidth: '1400px',
+          maxWidth: '1200px',
           margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          {/* Logo Section */}
+          {/* Logo */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              animation: 'fadeIn 0.5s ease-in'
+            }}>
+              🛡️
+            </div>
+            <h1 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#6366f1',
+              margin: 0,
+              animation: 'fadeIn 0.5s ease-in'
+            }}>
+              QuantumSafe
+            </h1>
+          </div>
+
+          {/* User Info */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '16px'
           }}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              background: 'linear-gradient(135deg, #00f5ff, #ff00ff)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '24px',
-              boxShadow: '0 8px 32px rgba(0, 245, 255, 0.3)'
-            }}>
-              🛡️
-            </div>
-            <div>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                margin: 0,
-                lineHeight: 1
-              }}>
-                QuantumSafe
-              </h1>
-              <p style={{
-                fontSize: '12px',
-                color: 'rgba(255, 255, 255, 0.6)',
-                margin: 0,
-                textTransform: 'uppercase',
-                letterSpacing: '1px'
-              }}>
-                Quantum Security Platform
-              </p>
-            </div>
-          </div>
-
-          {/* User Info & Controls */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '20px'
-          }}>
-            {/* Ambassador Status */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '8px 16px',
-              background: `rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
-                                ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
-                                ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.1)`,
-              border: `1px solid rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
-                                     ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
-                                     ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.3)`,
-              borderRadius: '12px'
-            }}>
-              <span style={{ fontSize: '16px' }}>{ambassadorTiers[ambassadorTier].icon}</span>
-              <span style={{
-                fontSize: '12px',
-                color: ambassadorTiers[ambassadorTier].color,
-                fontWeight: '600',
-                textTransform: 'uppercase',
-                letterSpacing: '1px'
-              }}>
-                {ambassadorTiers[ambassadorTier].name}
-              </span>
-            </div>
-
-            {/* Wallet Connection Status */}
-            {web3Address ? (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: '12px'
-              }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  background: '#10b981',
-                  borderRadius: '50%',
-                  animation: 'pulse 2s infinite'
-                }} />
-                <div>
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#10b981',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px'
-                  }}>
-                    {SUPPORTED_NETWORKS[currentNetworkType]?.icon} {currentNetworkType} Connected
-                  </div>
-                  <div style={{
-                    fontSize: '10px',
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    fontFamily: 'monospace'
-                  }}>
-                    {web3Address.slice(0, 6)}...{web3Address.slice(-4)}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={handleConnectWallet}
-                disabled={walletConnecting}
-                style={{
-                  padding: '12px 20px',
-                  background: walletConnecting ? 'rgba(107, 114, 128, 0.5)' : 'linear-gradient(45deg, #00f5ff, #0099cc)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: walletConnecting ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.3s ease',
-                  boxShadow: walletConnecting ? 'none' : '0 4px 16px rgba(0, 245, 255, 0.3)'
-                }}
-              >
-                {walletConnecting ? (
-                  <>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      border: '2px solid rgba(255, 255, 255, 0.3)',
-                      borderTop: '2px solid white',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite'
-                    }} />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    🔗 Connect Wallet
-                  </>
-                )}
-              </button>
-            )}
-            
-            {/* User Points Display */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -792,45 +449,29 @@ export default function Dashboard(props) {
             }}>
               <div style={{
                 fontSize: '14px',
-                color: 'rgba(255, 255, 255, 0.7)'
+                color: '#6b7280'
               }}>
                 {user?.email || 'User'}
               </div>
               <div style={{
-                fontSize: '18px',
-                fontWeight: '700',
-                background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#16a34a'
               }}>
-                💎 {userPoints.toLocaleString()} Points
+                {userPoints} Points
               </div>
             </div>
-            
-            {/* Sign Out Button */}
             <button
               onClick={signOut}
               style={{
-                padding: '10px 16px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '8px 16px',
+                background: '#f3f4f6',
+                border: '1px solid #d1d5db',
                 borderRadius: '8px',
-                color: 'rgba(255, 255, 255, 0.8)',
+                color: '#374151',
                 cursor: 'pointer',
                 fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = 'rgba(255, 255, 255, 0.15)';
-                e.target.style.color = '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-                e.target.style.color = 'rgba(255, 255, 255, 0.8)';
+                fontWeight: '500'
               }}
             >
               Sign Out
@@ -839,17 +480,72 @@ export default function Dashboard(props) {
         </div>
       </div>
 
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+        {/* Referral Section */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#111827',
+            marginBottom: '16px'
+          }}>
+            🔗 Referral Link
+          </h3>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center'
+          }}>
+            <input
+              type="text"
+              value={referralLink}
+              readOnly
+              style={{
+                width: '320px',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                background: '#f9fafb',
+                color: '#6b7280'
+              }}
+            />
+            <button
+              onClick={copyReferralLink}
+              style={{
+                width: '100px',
+                padding: '12px',
+                background: copied ? '#16a34a' : '#4f46e5',
+                border: 'none',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+
         {/* Navigation Tabs */}
         <div style={{
           display: 'flex',
-          gap: '6px',
-          marginBottom: '32px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          padding: '6px',
-          borderRadius: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(20px)'
+          gap: '4px',
+          marginBottom: '24px',
+          background: 'white',
+          padding: '4px',
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb'
         }}>
           {tabs.map((tab) => (
             <button
@@ -857,35 +553,22 @@ export default function Dashboard(props) {
               onClick={() => setActiveTab(tab.id)}
               style={{
                 flex: 1,
-                padding: '16px 20px',
-                borderRadius: '12px',
+                padding: '12px 16px',
+                borderRadius: '8px',
                 border: 'none',
-                background: activeTab === tab.id ? 'linear-gradient(45deg, #00f5ff, #0099cc)' : 'transparent',
-                color: activeTab === tab.id ? 'white' : 'rgba(255, 255, 255, 0.7)',
+                background: activeTab === tab.id ? '#6366f1' : 'transparent',
+                color: activeTab === tab.id ? 'white' : '#6b7280',
                 cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '600',
-                transition: 'all 0.3s ease',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '10px',
-                boxShadow: activeTab === tab.id ? '0 4px 16px rgba(0, 245, 255, 0.3)' : 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== tab.id) {
-                  e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-                  e.target.style.color = '#ffffff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== tab.id) {
-                  e.target.style.background = 'transparent';
-                  e.target.style.color = 'rgba(255, 255, 255, 0.7)';
-                }
+                gap: '8px'
               }}
             >
-              <span style={{ fontSize: '18px' }}>{tab.icon}</span>
+              <span>{tab.icon}</span>
               {tab.label}
             </button>
           ))}
@@ -894,159 +577,84 @@ export default function Dashboard(props) {
         {/* Scanner Tab */}
         {activeTab === 'scanner' && (
           <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '20px',
-            padding: '40px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(20px)'
+            background: 'white',
+            borderRadius: '12px',
+            padding: '32px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
           }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '40px'
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#111827',
+              marginBottom: '8px'
             }}>
-              <h2 style={{
-                fontSize: '32px',
-                fontWeight: '700',
-                background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+              🔍 Scan a Digital Asset
+            </h2>
+            <p style={{
+              color: '#6b7280',
+              marginBottom: '32px',
+              fontSize: '16px'
+            }}>
+              Analyze your digital assets for quantum vulnerabilities
+            </p>
+
+            {/* Asset Type Selection */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#111827',
                 marginBottom: '12px'
               }}>
-                🔍 Quantum Security Scanner
-              </h2>
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '18px',
-                maxWidth: '600px',
-                margin: '0 auto',
-                lineHeight: '1.6'
-              }}>
-                Advanced AI-powered analysis to detect quantum vulnerabilities in your digital assets
-              </p>
+                Asset Type:
+              </label>
+              <select
+                value={selectedAssetType}
+                onChange={(e) => setSelectedAssetType(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: 'white'
+                }}
+              >
+                {assetTypes.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.icon} {type.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Wallet Connection Status in Scanner */}
-            {web3Address && (
-              <div style={{
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: '16px',
-                padding: '24px',
-                marginBottom: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px'
+            {/* Asset Input */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#111827',
+                marginBottom: '12px'
               }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  background: 'linear-gradient(45deg, #10b981, #059669)',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px'
-                }}>
-                  ✅
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    color: '#10b981',
-                    fontWeight: '700',
-                    fontSize: '18px',
-                    marginBottom: '4px'
-                  }}>
-                    Wallet Connected - {SUPPORTED_NETWORKS[currentNetworkType]?.name} Network
-                  </div>
-                  <div style={{
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    fontSize: '14px',
-                    fontFamily: 'monospace'
-                  }}>
-                    {web3Address}
-                  </div>
-                </div>
-                <div style={{
-                  background: 'rgba(16, 185, 129, 0.2)',
-                  padding: '8px 16px',
+                Address or Link:
+              </label>
+              <input
+                type="text"
+                value={assetInput}
+                onChange={(e) => setAssetInput(e.target.value)}
+                placeholder="Enter asset address or link"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
-                  color: '#10b981',
-                  fontSize: '14px',
-                  fontWeight: '600'
-                }}>
-                  {SUPPORTED_NETWORKS[currentNetworkType]?.icon} {currentNetworkType}
-                </div>
-              </div>
-            )}
-
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '32px',
-              marginBottom: '32px'
-            }}>
-              {/* Asset Type Selection */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#ffffff',
-                  marginBottom: '12px'
-                }}>
-                  Asset Type:
-                </label>
-                <select
-                  value={selectedAssetType}
-                  onChange={(e) => setSelectedAssetType(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    color: '#ffffff',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                >
-                  {assetTypes.map((type) => (
-                    <option key={type.value} value={type.value} style={{ background: '#1a1a2e', color: '#ffffff' }}>
-                      {type.icon} {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Asset Input */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#ffffff',
-                  marginBottom: '12px'
-                }}>
-                  Address or Link:
-                </label>
-                <input
-                  type="text"
-                  value={assetInput}
-                  onChange={(e) => setAssetInput(e.target.value)}
-                  placeholder="Enter asset address or link"
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '12px',
-                    fontSize: '16px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    color: '#ffffff',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                  disabled={scanning}
-                />
-              </div>
+                  fontSize: '16px'
+                }}
+                disabled={scanning}
+              />
             </div>
 
             {/* Scan Button */}
@@ -1055,878 +663,131 @@ export default function Dashboard(props) {
               disabled={scanning || !assetInput.trim() || userPoints < 10}
               style={{
                 width: '100%',
-                padding: '20px',
-                borderRadius: '16px',
+                padding: '16px',
+                borderRadius: '8px',
                 border: 'none',
-                background: scanning || userPoints < 10 ? 
-                  'rgba(107, 114, 128, 0.5)' : 
-                  'linear-gradient(45deg, #00f5ff, #ff00ff)',
+                background: scanning || userPoints < 10 ? '#d1d5db' : '#6366f1',
                 color: 'white',
-                fontSize: '18px',
-                fontWeight: '700',
+                fontSize: '16px',
+                fontWeight: '600',
                 cursor: scanning || userPoints < 10 ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '12px',
-                transition: 'all 0.3s ease',
-                boxShadow: scanning || userPoints < 10 ? 
-                  'none' : 
-                  '0 8px 32px rgba(0, 245, 255, 0.4)',
-                textTransform: 'uppercase',
-                letterSpacing: '1px'
+                gap: '8px'
               }}
             >
               {scanning ? (
                 <>
                   <div style={{
-                    width: '24px',
-                    height: '24px',
-                    border: '3px solid rgba(255, 255, 255, 0.3)',
-                    borderTop: '3px solid white',
+                    width: '20px',
+                    height: '20px',
+                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                    borderTop: '2px solid white',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }} />
-                  Scanning Asset...
+                  Scanning...
                 </>
               ) : userPoints < 10 ? (
-                <>
-                  ⚠️ Insufficient Points (Need 10 points)
-                </>
+                'Insufficient Points (Need 10 points)'
               ) : (
-                <>
-                  🚀 Start Quantum Scan (10 points)
-                </>
+                'Start Scan (10 points)'
               )}
             </button>
 
             {userPoints < 10 && (
               <div style={{
-                marginTop: '24px',
-                padding: '20px',
-                background: 'rgba(255, 165, 0, 0.1)',
-                borderRadius: '12px',
-                border: '1px solid rgba(255, 165, 0, 0.3)',
-                color: '#ffa502',
-                fontSize: '16px',
-                textAlign: 'center'
+                marginTop: '16px',
+                padding: '16px',
+                background: '#fef3c7',
+                borderRadius: '8px',
+                border: '1px solid #f59e0b',
+                color: '#92400e',
+                fontSize: '14px'
               }}>
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>💡</div>
-                <strong>Need more points?</strong> Share your results on social media, invite friends, or engage with our community to earn points!
+                💡 <strong>Need more points?</strong> Share your results on Twitter or invite friends to earn points!
               </div>
             )}
-          </div>
-        )}
-
-        {/* Points & Rewards Tab */}
-        {activeTab === 'points' && <PromoTweets />}
-
-        {/* Referrals Tab */}
-        {activeTab === 'referrals' && (
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '20px',
-            padding: '40px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(20px)'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '40px'
-            }}>
-              <h2 style={{
-                fontSize: '32px',
-                fontWeight: '700',
-                background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                marginBottom: '12px'
-              }}>
-                🔗 Enhanced Referral System
-              </h2>
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '18px',
-                maxWidth: '600px',
-                margin: '0 auto',
-                lineHeight: '1.6'
-              }}>
-                Earn 7% of all points your referrals generate forever! Build your quantum security empire.
-              </p>
-            </div>
-
-            {/* Referral Stats Overview */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '24px',
-              marginBottom: '40px'
-            }}>
-              <div style={{
-                background: 'rgba(255, 215, 0, 0.1)',
-                border: '1px solid rgba(255, 215, 0, 0.3)',
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>👥</div>
-                <div style={{
-                  fontSize: '28px',
-                  fontWeight: '700',
-                  color: '#ffd700',
-                  marginBottom: '4px'
-                }}>
-                  {referralStats.totalReferrals}
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  fontSize: '14px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}>
-                  Total Referrals
-                </div>
-              </div>
-
-              <div style={{
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>💰</div>
-                <div style={{
-                  fontSize: '28px',
-                  fontWeight: '700',
-                  color: '#10b981',
-                  marginBottom: '4px'
-                }}>
-                  {referralStats.totalEarned.toFixed(1)}
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  fontSize: '14px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}>
-                  Points Earned
-                </div>
-              </div>
-
-              <div style={{
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚡</div>
-                <div style={{
-                  fontSize: '28px',
-                  fontWeight: '700',
-                  color: '#3b82f6',
-                  marginBottom: '4px'
-                }}>
-                  {referralStats.activeReferrals}
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  fontSize: '14px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}>
-                  Active Referrals
-                </div>
-              </div>
-
-              <div style={{
-                background: 'rgba(139, 92, 246, 0.1)',
-                border: '1px solid rgba(139, 92, 246, 0.3)',
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>📈</div>
-                <div style={{
-                  fontSize: '28px',
-                  fontWeight: '700',
-                  color: '#8b5cf6',
-                  marginBottom: '4px'
-                }}>
-                  7%
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  fontSize: '14px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}>
-                  Commission Rate
-                </div>
-              </div>
-            </div>
-
-            {/* Referral Link Section */}
-            <div style={{
-              background: 'rgba(0, 245, 255, 0.1)',
-              border: '1px solid rgba(0, 245, 255, 0.3)',
-              borderRadius: '16px',
-              padding: '32px',
-              marginBottom: '40px'
-            }}>
-              <h3 style={{
-                color: '#00f5ff',
-                fontSize: '24px',
-                fontWeight: '700',
-                marginBottom: '20px',
-                textAlign: 'center'
-              }}>
-                🎯 Your Enhanced Referral Link
-              </h3>
-              
-              <div style={{
-                display: 'flex',
-                gap: '16px',
-                alignItems: 'center',
-                marginBottom: '24px'
-              }}>
-                <input
-                  type="text"
-                  value={referralLink}
-                  readOnly
-                  style={{
-                    flex: 1,
-                    padding: '16px 20px',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    color: '#ffffff',
-                    fontFamily: 'monospace',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                />
-                <button
-                  onClick={copyReferralLink}
-                  style={{
-                    padding: '16px 24px',
-                    background: copied ? 
-                      'linear-gradient(45deg, #10b981, #059669)' : 
-                      'linear-gradient(45deg, #00f5ff, #0099cc)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 4px 16px rgba(0, 245, 255, 0.3)'
-                  }}
-                >
-                  {copied ? '✅ Copied!' : '📋 Copy Link'}
-                </button>
-              </div>
-
-              {web3Address && (
-                <div style={{
-                  padding: '16px',
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    color: '#10b981',
-                    fontSize: '14px',
-                    fontWeight: '600'
-                  }}>
-                    ✨ Enhanced Referral: Your link is connected to wallet {web3Address.slice(0, 8)}...{web3Address.slice(-6)}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* How It Works */}
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '16px',
-              padding: '32px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}>
-              <h3 style={{
-                color: '#ffffff',
-                fontSize: '24px',
-                fontWeight: '700',
-                marginBottom: '24px',
-                textAlign: 'center'
-              }}>
-                💰 How the Enhanced Referral System Works
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: '24px'
-              }}>
-                <div style={{
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  borderLeft: '4px solid #10b981'
-                }}>
-                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>🎁</div>
-                  <h4 style={{
-                    color: '#ffffff',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    marginBottom: '8px'
-                  }}>
-                    Earn 7% Forever
-                  </h4>
-                  <p style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    margin: 0
-                  }}>
-                    Get 7% of all points your referrals earn from any activity - scans, social media, payments - for life!
-                  </p>
-                </div>
-
-                <div style={{
-                  background: 'rgba(59, 130, 246, 0.1)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  borderLeft: '4px solid #3b82f6'
-                }}>
-                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>🚀</div>
-                  <h4 style={{
-                    color: '#ffffff',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    marginBottom: '8px'
-                  }}>
-                    Instant Rewards
-                  </h4>
-                  <p style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    margin: 0
-                  }}>
-                    Points are credited immediately when your referrals earn them. No waiting, no delays.
-                  </p>
-                </div>
-
-                <div style={{
-                  background: 'rgba(139, 92, 246, 0.1)',
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  borderLeft: '4px solid #8b5cf6'
-                }}>
-                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>📈</div>
-                  <h4 style={{
-                    color: '#ffffff',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    marginBottom: '8px'
-                  }}>
-                    Unlimited Potential
-                  </h4>
-                  <p style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    margin: 0
-                  }}>
-                    No limit on referrals or earnings. Build your quantum security empire and earn passive income!
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Ambassador Program Tab */}
-        {activeTab === 'ambassador' && (
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '20px',
-            padding: '40px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(20px)'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '40px'
-            }}>
-              <h2 style={{
-                fontSize: '32px',
-                fontWeight: '700',
-                background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                marginBottom: '12px'
-              }}>
-                👑 Ambassador Program
-              </h2>
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '18px',
-                maxWidth: '600px',
-                margin: '0 auto',
-                lineHeight: '1.6'
-              }}>
-                Unlock exclusive benefits and earn more points as you grow with QuantumSafe
-              </p>
-            </div>
-
-            {/* Current Status */}
-            <div style={{
-              background: `rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
-                              ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
-                              ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.1)`,
-              border: `1px solid rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
-                                     ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
-                                     ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.3)`,
-              borderRadius: '16px',
-              padding: '32px',
-              marginBottom: '40px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '64px', marginBottom: '16px' }}>
-                {ambassadorTiers[ambassadorTier].icon}
-              </div>
-              <h3 style={{
-                color: ambassadorTiers[ambassadorTier].color,
-                fontSize: '28px',
-                fontWeight: '700',
-                marginBottom: '8px'
-              }}>
-                Current Status: {ambassadorTiers[ambassadorTier].name}
-              </h3>
-              <p style={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '16px',
-                margin: 0
-              }}>
-                {ambassadorTiers[ambassadorTier].requirements}
-              </p>
-            </div>
-
-            {/* Points Breakdown */}
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              borderRadius: '16px',
-              padding: '32px',
-              marginBottom: '40px',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}>
-              <h3 style={{
-                color: '#ffffff',
-                fontSize: '24px',
-                fontWeight: '700',
-                marginBottom: '24px',
-                textAlign: 'center'
-              }}>
-                📊 Your Points Breakdown
-              </h3>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '24px'
-              }}>
-                <div style={{
-                  background: 'rgba(29, 161, 242, 0.1)',
-                  border: '1px solid rgba(29, 161, 242, 0.3)',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>📱</div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#1da1f2',
-                    marginBottom: '4px'
-                  }}>
-                    {pointsBreakdown.social.toFixed(1)}
-                  </div>
-                  <div style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: '14px'
-                  }}>
-                    Social Media Points
-                  </div>
-                </div>
-
-                <div style={{
-                  background: 'rgba(255, 215, 0, 0.1)',
-                  border: '1px solid rgba(255, 215, 0, 0.3)',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔗</div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#ffd700',
-                    marginBottom: '4px'
-                  }}>
-                    {pointsBreakdown.referral.toFixed(1)}
-                  </div>
-                  <div style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: '14px'
-                  }}>
-                    Referral Points
-                  </div>
-                </div>
-
-                <div style={{
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#10b981',
-                    marginBottom: '4px'
-                  }}>
-                    {pointsBreakdown.scan.toFixed(1)}
-                  </div>
-                  <div style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: '14px'
-                  }}>
-                    Scan Points
-                  </div>
-                </div>
-
-                <div style={{
-                  background: 'rgba(139, 92, 246, 0.1)',
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>💎</div>
-                  <div style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#8b5cf6',
-                    marginBottom: '4px'
-                  }}>
-                    {pointsBreakdown.total.toFixed(1)}
-                  </div>
-                  <div style={{
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontSize: '14px'
-                  }}>
-                    Total Points
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Ambassador Tiers */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '24px'
-            }}>
-              {/* Bronze Tier */}
-              <div style={{
-                background: 'rgba(205, 127, 50, 0.1)',
-                border: `2px solid ${ambassadorTier === 'bronze' ? '#CD7F32' : 'rgba(205, 127, 50, 0.3)'}`,
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center',
-                transition: 'all 0.3s ease',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-4px)';
-                e.target.style.boxShadow = '0 12px 32px rgba(205, 127, 50, 0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
-              }}>
-                {ambassadorTier === 'bronze' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    background: '#CD7F32',
-                    color: 'white',
-                    padding: '4px 12px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '600'
-                  }}>
-                    CURRENT
-                  </div>
-                )}
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥉</div>
-                <h4 style={{
-                  color: '#CD7F32',
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  marginBottom: '16px'
-                }}>
-                  Bronze Ambassador
-                </h4>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  fontSize: '14px',
-                  marginBottom: '20px',
-                  lineHeight: '1.6'
-                }}>
-                  • 10+ Referrals<br/>
-                  • 500+ Points<br/>
-                  • 5+ Social Posts
-                </div>
-                <div style={{
-                  color: '#CD7F32',
-                  fontSize: '16px',
-                  fontWeight: '600'
-                }}>
-                  10% Bonus on all points
-                </div>
-              </div>
-
-              {/* Silver Tier */}
-              <div style={{
-                background: 'rgba(192, 192, 192, 0.1)',
-                border: `2px solid ${ambassadorTier === 'silver' ? '#C0C0C0' : 'rgba(192, 192, 192, 0.3)'}`,
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center',
-                transition: 'all 0.3s ease',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-4px)';
-                e.target.style.boxShadow = '0 12px 32px rgba(192, 192, 192, 0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
-              }}>
-                {ambassadorTier === 'silver' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    background: '#C0C0C0',
-                    color: 'white',
-                    padding: '4px 12px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '600'
-                  }}>
-                    CURRENT
-                  </div>
-                )}
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥈</div>
-                <h4 style={{
-                  color: '#C0C0C0',
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  marginBottom: '16px'
-                }}>
-                  Silver Ambassador
-                </h4>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  fontSize: '14px',
-                  marginBottom: '20px',
-                  lineHeight: '1.6'
-                }}>
-                  • 25+ Referrals<br/>
-                  • 1,500+ Points<br/>
-                  • 15+ Social Posts
-                </div>
-                <div style={{
-                  color: '#C0C0C0',
-                  fontSize: '16px',
-                  fontWeight: '600'
-                }}>
-                  15% Bonus + Monthly rewards
-                </div>
-              </div>
-
-              {/* Gold Tier */}
-              <div style={{
-                background: 'rgba(255, 215, 0, 0.1)',
-                border: `2px solid ${ambassadorTier === 'gold' ? '#FFD700' : 'rgba(255, 215, 0, 0.3)'}`,
-                borderRadius: '16px',
-                padding: '24px',
-                textAlign: 'center',
-                transition: 'all 0.3s ease',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-4px)';
-                e.target.style.boxShadow = '0 12px 32px rgba(255, 215, 0, 0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
-              }}>
-                {ambassadorTier === 'gold' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    background: '#FFD700',
-                    color: 'black',
-                    padding: '4px 12px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '600'
-                  }}>
-                    CURRENT
-                  </div>
-                )}
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥇</div>
-                <h4 style={{
-                  color: '#FFD700',
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  marginBottom: '16px'
-                }}>
-                  Gold Ambassador
-                </h4>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  fontSize: '14px',
-                  marginBottom: '20px',
-                  lineHeight: '1.6'
-                }}>
-                  • 50+ Referrals<br/>
-                  • 5,000+ Points<br/>
-                  • 30+ Social Posts
-                </div>
-                <div style={{
-                  color: '#FFD700',
-                  fontSize: '16px',
-                  fontWeight: '600'
-                }}>
-                  25% Bonus + Premium NFTs
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
         {/* History Tab */}
         {activeTab === 'history' && (
           <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '20px',
-            padding: '40px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(20px)'
+            background: 'white',
+            borderRadius: '12px',
+            padding: '32px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
           }}>
             <h3 style={{
-              fontSize: '28px',
-              fontWeight: '700',
-              background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: '32px',
-              textAlign: 'center'
+              fontSize: '20px',
+              fontWeight: '600',
+              color: '#111827',
+              marginBottom: '24px'
             }}>
               📋 Scan History
             </h3>
             
             {scanResults.length > 0 ? (
-              <div style={{ display: 'grid', gap: '20px' }}>
+              <div style={{ display: 'grid', gap: '16px' }}>
                 {scanResults.map((scan) => (
                   <div 
                     key={scan.id} 
                     style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: '16px',
-                      padding: '24px',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.background = 'rgba(255, 255, 255, 0.08)';
-                      e.target.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.background = 'rgba(255, 255, 255, 0.05)';
-                      e.target.style.transform = 'translateY(0)';
+                      background: '#f9fafb',
+                      borderRadius: '8px',
+                      padding: '20px',
+                      border: '1px solid #e5e7eb'
                     }}
                   >
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'flex-start',
-                      marginBottom: '16px'
+                      marginBottom: '12px'
                     }}>
                       <div>
                         <div style={{
-                          fontSize: '16px',
+                          fontSize: '14px',
                           fontWeight: '600',
-                          color: '#00f5ff',
-                          marginBottom: '6px'
+                          color: '#6366f1',
+                          marginBottom: '4px'
                         }}>
-                          {scan.asset_type.charAt(0).toUpperCase() + scan.asset_type.slice(1)} Scan
+                          {scan.asset_type.charAt(0).toUpperCase() + scan.asset_type.slice(1)}
                         </div>
                         <div style={{
-                          fontSize: '14px',
-                          color: 'rgba(255, 255, 255, 0.6)'
+                          fontSize: '12px',
+                          color: '#6b7280'
                         }}>
-                          {new Date(scan.scanned_at).toLocaleDateString()} • {new Date(scan.scanned_at).toLocaleTimeString()}
+                          {new Date(scan.scanned_at).toLocaleDateString()}
                         </div>
                       </div>
                       
                       <div style={{
-                        padding: '8px 16px',
-                        borderRadius: '20px',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
                         fontSize: '12px',
-                        fontWeight: '700',
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                        background: scan.quantum_risk === 'high' ? 'rgba(239, 68, 68, 0.2)' : 
-                                   scan.quantum_risk === 'medium' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-                        color: scan.quantum_risk === 'high' ? '#ef4444' : 
-                               scan.quantum_risk === 'medium' ? '#f59e0b' : '#10b981',
-                        border: `1px solid ${scan.quantum_risk === 'high' ? '#ef4444' : 
-                                scan.quantum_risk === 'medium' ? '#f59e0b' : '#10b981'}40`
+                        fontWeight: '600',
+                        background: scan.quantum_risk === 'high' ? '#fef2f2' : 
+                                   scan.quantum_risk === 'medium' ? '#fef3c7' : '#f0fdf4',
+                        color: scan.quantum_risk === 'high' ? '#dc2626' : 
+                               scan.quantum_risk === 'medium' ? '#d97706' : '#16a34a'
                       }}>
-                        {scan.quantum_risk === 'high' ? '🚨' : scan.quantum_risk === 'medium' ? '⚠️' : '✅'} {scan.quantum_risk} Risk
+                        {scan.quantum_risk.toUpperCase()} RISK
                       </div>
                     </div>
                     
                     <div style={{
                       fontSize: '14px',
-                      color: 'rgba(255, 255, 255, 0.8)',
+                      color: '#374151',
                       fontFamily: 'monospace',
                       wordBreak: 'break-all',
-                      background: 'rgba(0, 0, 0, 0.3)',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                      background: 'white',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px solid #e5e7eb'
                     }}>
                       {scan.asset_address}
                     </div>
@@ -1936,20 +797,22 @@ export default function Dashboard(props) {
             ) : (
               <div style={{
                 textAlign: 'center',
-                padding: '80px 20px',
-                color: 'rgba(255, 255, 255, 0.6)'
+                padding: '60px 20px',
+                color: '#6b7280'
               }}>
-                <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔍</div>
-                <h3 style={{ fontSize: '24px', margin: '0 0 12px 0', color: '#ffffff' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+                <h3 style={{ fontSize: '18px', margin: 0, color: '#111827' }}>
                   No Scans Yet
                 </h3>
-                <p style={{ fontSize: '16px', margin: 0, lineHeight: '1.6' }}>
-                  Start your first quantum security scan to protect your digital assets and earn points!
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  Start your first quantum security scan to protect your digital assets!
                 </p>
               </div>
             )}
           </div>
         )}
+
+        {activeTab === 'marketing' && <PromoTweets />}
 
         {/* Scan Result Display */}
         {currentScanResult && (
@@ -1959,6 +822,288 @@ export default function Dashboard(props) {
             user={user}
           />
         )}
+
+        {/* QuantumSafe Benefits Section - المطلوب */}
+        <div style={{
+          background: 'white',
+          borderRadius: '20px',
+          padding: '40px',
+          marginTop: '32px',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+        }}>
+          <h3 style={{
+            color: '#6366f1',
+            marginBottom: '32px',
+            fontSize: '2rem',
+            fontWeight: '700',
+            textAlign: 'center',
+            background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            🔐 Why Choose QuantumSafe?
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '24px',
+            marginTop: '32px'
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+              padding: '32px',
+              borderRadius: '20px',
+              border: '2px solid #0ea5e9',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-8px)';
+              e.target.style.boxShadow = '0 20px 40px rgba(14, 165, 233, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🎁</div>
+              <strong style={{ 
+                fontSize: '1.25rem', 
+                color: '#0369a1',
+                display: 'block',
+                marginBottom: '8px'
+              }}>5 Free Points</strong>
+              <small style={{ 
+                color: '#0284c7',
+                fontSize: '1rem',
+                lineHeight: '1.5'
+              }}>Get started with free scanning credits</small>
+            </div>
+
+            <div style={{
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              padding: '32px',
+              borderRadius: '20px',
+              border: '2px solid #22c55e',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-8px)';
+              e.target.style.boxShadow = '0 20px 40px rgba(34, 197, 94, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔍</div>
+              <strong style={{ 
+                fontSize: '1.25rem', 
+                color: '#15803d',
+                display: 'block',
+                marginBottom: '8px'
+              }}>Advanced Scanning</strong>
+              <small style={{ 
+                color: '#16a34a',
+                fontSize: '1rem',
+                lineHeight: '1.5'
+              }}>Detect 10+ quantum vulnerabilities</small>
+            </div>
+
+            <div style={{
+              background: 'linear-gradient(135deg, #fefce8 0%, #fef3c7 100%)',
+              padding: '32px',
+              borderRadius: '20px',
+              border: '2px solid #eab308',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-8px)';
+              e.target.style.boxShadow = '0 20px 40px rgba(234, 179, 8, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>💰</div>
+              <strong style={{ 
+                fontSize: '1.25rem', 
+                color: '#a16207',
+                display: 'block',
+                marginBottom: '8px'
+              }}>Earn Rewards</strong>
+              <small style={{ 
+                color: '#ca8a04',
+                fontSize: '1rem',
+                lineHeight: '1.5'
+              }}>Points for scans, referrals & engagement</small>
+            </div>
+
+            <div style={{
+              background: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)',
+              padding: '32px',
+              borderRadius: '20px',
+              border: '2px solid #a855f7',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-8px)';
+              e.target.style.boxShadow = '0 20px 40px rgba(168, 85, 247, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = 'none';
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🌐</div>
+              <strong style={{ 
+                fontSize: '1.25rem', 
+                color: '#7c3aed',
+                display: 'block',
+                marginBottom: '8px'
+              }}>Web3 Native</strong>
+              <small style={{ 
+                color: '#8b5cf6',
+                fontSize: '1rem',
+                lineHeight: '1.5'
+              }}>Fully decentralized authentication</small>
+            </div>
+          </div>
+
+          {/* Additional Benefits */}
+          <div style={{
+            marginTop: '40px',
+            padding: '32px',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0'
+          }}>
+            <h4 style={{
+              color: '#334155',
+              fontSize: '1.5rem',
+              fontWeight: '600',
+              marginBottom: '24px',
+              textAlign: 'center'
+            }}>
+              🚀 Enhanced Features
+            </h4>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '20px'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '16px',
+                background: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>🔗</span>
+                <div>
+                  <strong style={{ color: '#334155' }}>7% Referral Commission</strong>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                    Earn forever from your referrals
+                  </p>
+                </div>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '16px',
+                background: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>👑</span>
+                <div>
+                  <strong style={{ color: '#334155' }}>Ambassador Program</strong>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                    Bronze, Silver & Gold tiers
+                  </p>
+                </div>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '16px',
+                background: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>📱</span>
+                <div>
+                  <strong style={{ color: '#334155' }}>Social Media Rewards</strong>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                    Enhanced points for engagement
+                  </p>
+                </div>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '16px',
+                background: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <span style={{ fontSize: '1.5rem' }}>💎</span>
+                <div>
+                  <strong style={{ color: '#334155' }}>Premium Services</strong>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                    Crypto payments accepted
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Points System Info */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          marginTop: '24px',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#111827',
+            marginBottom: '16px'
+          }}>
+            🎁 Enhanced Points & Rewards System
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px',
+            fontSize: '14px',
+            color: '#6b7280'
+          }}>
+            <div>🐦 Twitter: 3 points per tweet + 0.05 per engagement</div>
+            <div>📱 Telegram: 5 points per post + 0.01 per interaction</div>
+            <div>📺 YouTube: 17 points per video + 0.3 per engagement</div>
+            <div>💼 LinkedIn: 22 points per article + 0.7 per engagement</div>
+            <div>🔗 Referrals: 7% commission forever</div>
+            <div>🔍 Each scan: 10 points</div>
+          </div>
+        </div>
 
         {/* Multi-Chain Payment Modal */}
         <MultiChainPaymentModal
@@ -1971,6 +1116,7 @@ export default function Dashboard(props) {
         {/* Wallet Security Scanner */}
         {web3Address && web3Network && (
           <div style={{ marginTop: '32px' }}>
+            <h2 style={{ color: '#4f8cff', marginBottom: '16px' }}>Scan your wallet</h2>
             <WalletSecurityScanner
               walletAddress={web3Address}
               networkKey={web3Network}
@@ -1978,56 +1124,31 @@ export default function Dashboard(props) {
             />
           </div>
         )}
+
+        {/* Wallet Connect Button */}
+        {!web3Address && (
+          <div style={{ textAlign: 'center', margin: '32px 0' }}>
+            <button
+              onClick={handleConnectWallet}
+              style={{
+                padding: '16px 32px',
+                fontSize: '18px',
+                borderRadius: '10px',
+                background: 'linear-gradient(90deg, #4f8cff, #52c41a)',
+                color: '#fff',
+                fontWeight: 'bold',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px #4f8cff33'
+              }}
+            >
+              Connect Wallet
+            </button>
+          </div>
+        )}
       </div>
 
-      <ToastContainer 
-        position="top-center" 
-        autoClose={4000} 
-        hideProgressBar 
-        newestOnTop 
-        closeOnClick 
-        pauseOnFocusLoss 
-        draggable 
-        pauseOnHover 
-        theme="dark"
-        toastStyle={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          color: '#ffffff'
-        }}
-      />
-      
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        @keyframes fadeIn {
-          0% { opacity: 0; transform: translateY(20px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-          width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(45deg, #00f5ff, #ff00ff);
-          border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(45deg, #0099cc, #cc00cc);
-        }
-      `}</style>
+      <ToastContainer position="top-center" autoClose={4000} hideProgressBar newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
     </div>
   );
 }
