@@ -295,6 +295,7 @@ export default function Dashboard(props) {
 
   const tabs = [
     { id: 'scanner', label: 'Quantum Scanner', icon: '🔍' },
+    { id: 'benefits', label: 'Why QuantumSafe?', icon: '🔐' },
     { id: 'analytics', label: 'Security Analytics', icon: '📊' },
     { id: 'history', label: 'Scan History', icon: '📋' },
     { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' },
@@ -712,6 +713,321 @@ export default function Dashboard(props) {
           </div>
         )}
 
+        {/* Benefits Tab - Why Choose QuantumSafe? */}
+        {activeTab === 'benefits' && (
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '40px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{
+              color: '#6366f1',
+              marginBottom: '32px',
+              fontSize: '2.5rem',
+              fontWeight: '700',
+              textAlign: 'center',
+              background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              🔐 Why Choose QuantumSafe?
+            </h2>
+            
+            {/* Main Benefits Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '24px',
+              marginBottom: '40px'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                padding: '32px',
+                borderRadius: '20px',
+                border: '2px solid #0ea5e9',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-8px)';
+                e.target.style.boxShadow = '0 20px 40px rgba(14, 165, 233, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🎁</div>
+                <strong style={{ 
+                  fontSize: '1.25rem', 
+                  color: '#0369a1',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>5 Free Points</strong>
+                <small style={{ 
+                  color: '#0284c7',
+                  fontSize: '1rem',
+                  lineHeight: '1.5'
+                }}>Get started with free scanning credits</small>
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                padding: '32px',
+                borderRadius: '20px',
+                border: '2px solid #22c55e',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-8px)';
+                e.target.style.boxShadow = '0 20px 40px rgba(34, 197, 94, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔍</div>
+                <strong style={{ 
+                  fontSize: '1.25rem', 
+                  color: '#15803d',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>Advanced Scanning</strong>
+                <small style={{ 
+                  color: '#16a34a',
+                  fontSize: '1rem',
+                  lineHeight: '1.5'
+                }}>Detect 10+ quantum vulnerabilities</small>
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, #fefce8 0%, #fef3c7 100%)',
+                padding: '32px',
+                borderRadius: '20px',
+                border: '2px solid #eab308',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-8px)';
+                e.target.style.boxShadow = '0 20px 40px rgba(234, 179, 8, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>💰</div>
+                <strong style={{ 
+                  fontSize: '1.25rem', 
+                  color: '#a16207',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>Earn Rewards</strong>
+                <small style={{ 
+                  color: '#ca8a04',
+                  fontSize: '1rem',
+                  lineHeight: '1.5'
+                }}>Points for scans, referrals & engagement</small>
+              </div>
+
+              <div style={{
+                background: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)',
+                padding: '32px',
+                borderRadius: '20px',
+                border: '2px solid #a855f7',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-8px)';
+                e.target.style.boxShadow = '0 20px 40px rgba(168, 85, 247, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🌐</div>
+                <strong style={{ 
+                  fontSize: '1.25rem', 
+                  color: '#7c3aed',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>Web3 Native</strong>
+                <small style={{ 
+                  color: '#8b5cf6',
+                  fontSize: '1rem',
+                  lineHeight: '1.5'
+                }}>Fully decentralized authentication</small>
+              </div>
+            </div>
+
+            {/* Enhanced Features Section */}
+            <div style={{
+              marginTop: '40px',
+              padding: '32px',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <h3 style={{
+                color: '#334155',
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                🚀 Enhanced Features
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '20px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>🔗</span>
+                  <div>
+                    <strong style={{ color: '#334155' }}>7% Referral Commission</strong>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                      Earn forever from your referrals
+                    </p>
+                  </div>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>👑</span>
+                  <div>
+                    <strong style={{ color: '#334155' }}>Ambassador Program</strong>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                      Bronze, Silver & Gold tiers
+                    </p>
+                  </div>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>📱</span>
+                  <div>
+                    <strong style={{ color: '#334155' }}>Social Media Rewards</strong>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                      Enhanced points for engagement
+                    </p>
+                  </div>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>💎</span>
+                  <div>
+                    <strong style={{ color: '#334155' }}>Premium Services</strong>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                      Crypto payments accepted
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ambassador Tiers Section */}
+            <div style={{
+              marginTop: '40px',
+              padding: '32px',
+              background: 'linear-gradient(135deg, #fef7cd 0%, #fef3c7 100%)',
+              borderRadius: '16px',
+              border: '2px solid #f59e0b'
+            }}>
+              <h3 style={{
+                color: '#92400e',
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                👑 Ambassador Program Tiers
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '20px'
+              }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #cd7f32 0%, #b8860b 100%)',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  color: 'white',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🥉</div>
+                  <h4 style={{ margin: '0 0 8px 0' }}>Bronze</h4>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem' }}>10 referrals • 500 points • 5 posts</p>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 'bold' }}>10% Bonus</p>
+                </div>
+                
+                <div style={{
+                  background: 'linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%)',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  color: 'white',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🥈</div>
+                  <h4 style={{ margin: '0 0 8px 0' }}>Silver</h4>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem' }}>25 referrals • 1500 points • 15 posts</p>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 'bold' }}>15% Bonus</p>
+                </div>
+                
+                <div style={{
+                  background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  color: '#92400e',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🥇</div>
+                  <h4 style={{ margin: '0 0 8px 0' }}>Gold</h4>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem' }}>50 referrals • 5000 points • 30 posts</p>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 'bold' }}>25% Bonus</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* History Tab */}
         {activeTab === 'history' && (
           <div style={{
@@ -823,256 +1139,7 @@ export default function Dashboard(props) {
           />
         )}
 
-        {/* QuantumSafe Benefits Section - المطلوب */}
-        <div style={{
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          marginTop: '32px',
-          border: '1px solid #e5e7eb',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
-        }}>
-          <h3 style={{
-            color: '#6366f1',
-            marginBottom: '32px',
-            fontSize: '2rem',
-            fontWeight: '700',
-            textAlign: 'center',
-            background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}>
-            🔐 Why Choose QuantumSafe?
-          </h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '24px',
-            marginTop: '32px'
-          }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-              padding: '32px',
-              borderRadius: '20px',
-              border: '2px solid #0ea5e9',
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-8px)';
-              e.target.style.boxShadow = '0 20px 40px rgba(14, 165, 233, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🎁</div>
-              <strong style={{ 
-                fontSize: '1.25rem', 
-                color: '#0369a1',
-                display: 'block',
-                marginBottom: '8px'
-              }}>5 Free Points</strong>
-              <small style={{ 
-                color: '#0284c7',
-                fontSize: '1rem',
-                lineHeight: '1.5'
-              }}>Get started with free scanning credits</small>
-            </div>
-
-            <div style={{
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-              padding: '32px',
-              borderRadius: '20px',
-              border: '2px solid #22c55e',
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-8px)';
-              e.target.style.boxShadow = '0 20px 40px rgba(34, 197, 94, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔍</div>
-              <strong style={{ 
-                fontSize: '1.25rem', 
-                color: '#15803d',
-                display: 'block',
-                marginBottom: '8px'
-              }}>Advanced Scanning</strong>
-              <small style={{ 
-                color: '#16a34a',
-                fontSize: '1rem',
-                lineHeight: '1.5'
-              }}>Detect 10+ quantum vulnerabilities</small>
-            </div>
-
-            <div style={{
-              background: 'linear-gradient(135deg, #fefce8 0%, #fef3c7 100%)',
-              padding: '32px',
-              borderRadius: '20px',
-              border: '2px solid #eab308',
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-8px)';
-              e.target.style.boxShadow = '0 20px 40px rgba(234, 179, 8, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>💰</div>
-              <strong style={{ 
-                fontSize: '1.25rem', 
-                color: '#a16207',
-                display: 'block',
-                marginBottom: '8px'
-              }}>Earn Rewards</strong>
-              <small style={{ 
-                color: '#ca8a04',
-                fontSize: '1rem',
-                lineHeight: '1.5'
-              }}>Points for scans, referrals & engagement</small>
-            </div>
-
-            <div style={{
-              background: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)',
-              padding: '32px',
-              borderRadius: '20px',
-              border: '2px solid #a855f7',
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-8px)';
-              e.target.style.boxShadow = '0 20px 40px rgba(168, 85, 247, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🌐</div>
-              <strong style={{ 
-                fontSize: '1.25rem', 
-                color: '#7c3aed',
-                display: 'block',
-                marginBottom: '8px'
-              }}>Web3 Native</strong>
-              <small style={{ 
-                color: '#8b5cf6',
-                fontSize: '1rem',
-                lineHeight: '1.5'
-              }}>Fully decentralized authentication</small>
-            </div>
-          </div>
-
-          {/* Additional Benefits */}
-          <div style={{
-            marginTop: '40px',
-            padding: '32px',
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-            borderRadius: '16px',
-            border: '1px solid #e2e8f0'
-          }}>
-            <h4 style={{
-              color: '#334155',
-              fontSize: '1.5rem',
-              fontWeight: '600',
-              marginBottom: '24px',
-              textAlign: 'center'
-            }}>
-              🚀 Enhanced Features
-            </h4>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '20px'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '16px',
-                background: 'white',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0'
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>🔗</span>
-                <div>
-                  <strong style={{ color: '#334155' }}>7% Referral Commission</strong>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                    Earn forever from your referrals
-                  </p>
-                </div>
-              </div>
-              
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '16px',
-                background: 'white',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0'
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>👑</span>
-                <div>
-                  <strong style={{ color: '#334155' }}>Ambassador Program</strong>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                    Bronze, Silver & Gold tiers
-                  </p>
-                </div>
-              </div>
-              
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '16px',
-                background: 'white',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0'
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>📱</span>
-                <div>
-                  <strong style={{ color: '#334155' }}>Social Media Rewards</strong>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                    Enhanced points for engagement
-                  </p>
-                </div>
-              </div>
-              
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '16px',
-                background: 'white',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0'
-              }}>
-                <span style={{ fontSize: '1.5rem' }}>💎</span>
-                <div>
-                  <strong style={{ color: '#334155' }}>Premium Services</strong>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                    Crypto payments accepted
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Points System Info */}
+        {/* Enhanced Points System Info */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
@@ -1091,17 +1158,17 @@ export default function Dashboard(props) {
           </h3>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
             gap: '16px',
             fontSize: '14px',
             color: '#6b7280'
           }}>
-            <div>🐦 Twitter: 3 points per tweet + 0.05 per engagement</div>
-            <div>📱 Telegram: 5 points per post + 0.01 per interaction</div>
-            <div>📺 YouTube: 17 points per video + 0.3 per engagement</div>
-            <div>💼 LinkedIn: 22 points per article + 0.7 per engagement</div>
-            <div>🔗 Referrals: 7% commission forever</div>
-            <div>🔍 Each scan: 10 points</div>
+            <div>🐦 <strong>Twitter:</strong> 3 points per tweet + 0.05 per engagement</div>
+            <div>📱 <strong>Telegram:</strong> 5 points per post + 0.01 per interaction</div>
+            <div>📺 <strong>YouTube:</strong> 17 points per video + 0.3 per engagement</div>
+            <div>💼 <strong>LinkedIn:</strong> 22 points per article + 0.7 per engagement</div>
+            <div>🔗 <strong>Referrals:</strong> 7% commission forever</div>
+            <div>🔍 <strong>Each scan:</strong> 10 points</div>
           </div>
         </div>
 
