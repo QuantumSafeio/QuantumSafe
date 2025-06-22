@@ -33,6 +33,11 @@ export default function Dashboard(props) {
   // Referral state
   const [referralLink, setReferralLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [referralStats, setReferralStats] = useState({
+    totalReferrals: 0,
+    totalEarned: 0,
+    activeReferrals: 0
+  });
 
   // Analytics state
   const [analytics, setAnalytics] = useState({
@@ -50,6 +55,15 @@ export default function Dashboard(props) {
   const [web3Provider, setWeb3Provider] = useState(null);
   const [web3Address, setWeb3Address] = useState('');
   const [web3Network, setWeb3Network] = useState('');
+
+  // Ambassador state
+  const [ambassadorTier, setAmbassadorTier] = useState('none');
+  const [socialStats, setSocialStats] = useState({
+    twitter: { posts: 0, engagement: 0, points: 0 },
+    telegram: { posts: 0, engagement: 0, points: 0 },
+    youtube: { videos: 0, engagement: 0, points: 0 },
+    linkedin: { articles: 0, engagement: 0, points: 0 }
+  });
 
   // Connect wallet handler
   const handleConnectWallet = async () => {
@@ -76,6 +90,8 @@ export default function Dashboard(props) {
     if (user) {
       fetchUserData();
       generateReferralLink();
+      fetchReferralStats();
+      fetchSocialStats();
     }
   }, [user]);
 
@@ -122,6 +138,53 @@ export default function Dashboard(props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const fetchReferralStats = async () => {
+    try {
+      const { data: referrals } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_id', user.id);
+
+      setReferralStats({
+        totalReferrals: referrals?.length || 0,
+        totalEarned: referrals?.reduce((sum, ref) => sum + (ref.total_earned || 0), 0) || 0,
+        activeReferrals: referrals?.filter(ref => ref.is_active).length || 0
+      });
+    } catch (error) {
+      console.error('Error fetching referral stats:', error);
+    }
+  };
+
+  const fetchSocialStats = async () => {
+    try {
+      const { data: socialData } = await supabase
+        .from('social_media_stats')
+        .select('*')
+        .eq('user_id', user.id);
+
+      const socialStatsMap = {
+        twitter: { posts: 0, engagement: 0, points: 0 },
+        telegram: { posts: 0, engagement: 0, points: 0 },
+        youtube: { videos: 0, engagement: 0, points: 0 },
+        linkedin: { articles: 0, engagement: 0, points: 0 }
+      };
+
+      socialData?.forEach(stat => {
+        if (socialStatsMap[stat.platform]) {
+          socialStatsMap[stat.platform] = {
+            posts: stat.posts_count || 0,
+            engagement: stat.engagement_count || 0,
+            points: stat.total_points || 0
+          };
+        }
+      });
+
+      setSocialStats(socialStatsMap);
+    } catch (error) {
+      console.error('Error fetching social stats:', error);
+    }
+  };
+
   const fetchUserData = async () => {
     try {
       setLoading(true);
@@ -142,12 +205,13 @@ export default function Dashboard(props) {
 
       const pointsPromise = supabase
         .from('user_points')
-        .select('points')
+        .select('points, ambassador_tier')
         .eq('user_id', user.id)
         .single();
 
       const { data: points } = await Promise.race([pointsPromise, timeout]);
       setUserPoints(points?.points || 0);
+      setAmbassadorTier(points?.ambassador_tier || 'none');
 
       const scansPromise = supabase
         .from('scan_results')
@@ -296,6 +360,9 @@ export default function Dashboard(props) {
   const tabs = [
     { id: 'scanner', label: 'Quantum Scanner', icon: '🔍' },
     { id: 'benefits', label: 'Why QuantumSafe?', icon: '🔐' },
+    { id: 'referrals', label: 'Referral System', icon: '🔗' },
+    { id: 'ambassadors', label: 'Ambassador Program', icon: '👑' },
+    { id: 'social', label: 'Social Media Points', icon: '📱' },
     { id: 'analytics', label: 'Security Analytics', icon: '📊' },
     { id: 'history', label: 'Scan History', icon: '📋' },
     { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' },
@@ -461,6 +528,15 @@ export default function Dashboard(props) {
               }}>
                 {userPoints} Points
               </div>
+              {ambassadorTier !== 'none' && (
+                <div style={{
+                  fontSize: '12px',
+                  color: '#fbbf24',
+                  fontWeight: 'bold'
+                }}>
+                  👑 {ambassadorTier.charAt(0).toUpperCase() + ambassadorTier.slice(1)} Ambassador
+                </div>
+              )}
             </div>
             <button
               onClick={signOut}
@@ -497,12 +573,13 @@ export default function Dashboard(props) {
             color: '#111827',
             marginBottom: '16px'
           }}>
-            🔗 Referral Link
+            🔗 Referral Link (7% Commission Forever)
           </h3>
           <div style={{
             display: 'flex',
             gap: '12px',
-            alignItems: 'center'
+            alignItems: 'center',
+            marginBottom: '16px'
           }}>
             <input
               type="text"
@@ -536,6 +613,32 @@ export default function Dashboard(props) {
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '16px',
+            fontSize: '14px',
+            color: '#6b7280'
+          }}>
+            <div>
+              <strong style={{ color: '#16a34a' }}>Total Referrals:</strong>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
+                {referralStats.totalReferrals}
+              </div>
+            </div>
+            <div>
+              <strong style={{ color: '#16a34a' }}>Total Earned:</strong>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
+                {referralStats.totalEarned.toFixed(1)} points
+              </div>
+            </div>
+            <div>
+              <strong style={{ color: '#16a34a' }}>Commission Rate:</strong>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
+                7% Forever
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Navigation Tabs */}
@@ -546,14 +649,15 @@ export default function Dashboard(props) {
           background: 'white',
           padding: '4px',
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid #e5e7eb',
+          overflowX: 'auto'
         }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                flex: 1,
+                flex: '0 0 auto',
                 padding: '12px 16px',
                 borderRadius: '8px',
                 border: 'none',
@@ -566,7 +670,8 @@ export default function Dashboard(props) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '8px',
+                whiteSpace: 'nowrap'
               }}
             >
               <span>{tab.icon}</span>
@@ -866,162 +971,435 @@ export default function Dashboard(props) {
                 }}>Fully decentralized authentication</small>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Enhanced Features Section */}
-            <div style={{
-              marginTop: '40px',
-              padding: '32px',
-              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-              borderRadius: '16px',
-              border: '1px solid #e2e8f0'
+        {/* Enhanced Referral System Tab */}
+        {activeTab === 'referrals' && (
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '40px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{
+              color: '#16a34a',
+              marginBottom: '32px',
+              fontSize: '2.5rem',
+              fontWeight: '700',
+              textAlign: 'center'
             }}>
-              <h3 style={{
-                color: '#334155',
-                fontSize: '1.5rem',
-                fontWeight: '600',
-                marginBottom: '24px',
-                textAlign: 'center'
-              }}>
-                🚀 Enhanced Features
-              </h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '20px'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '16px',
-                  background: 'white',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <span style={{ fontSize: '1.5rem' }}>🔗</span>
-                  <div>
-                    <strong style={{ color: '#334155' }}>7% Referral Commission</strong>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                      Earn forever from your referrals
-                    </p>
-                  </div>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '16px',
-                  background: 'white',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <span style={{ fontSize: '1.5rem' }}>👑</span>
-                  <div>
-                    <strong style={{ color: '#334155' }}>Ambassador Program</strong>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                      Bronze, Silver & Gold tiers
-                    </p>
-                  </div>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '16px',
-                  background: 'white',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <span style={{ fontSize: '1.5rem' }}>📱</span>
-                  <div>
-                    <strong style={{ color: '#334155' }}>Social Media Rewards</strong>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                      Enhanced points for engagement
-                    </p>
-                  </div>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '16px',
-                  background: 'white',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <span style={{ fontSize: '1.5rem' }}>💎</span>
-                  <div>
-                    <strong style={{ color: '#334155' }}>Premium Services</strong>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
-                      Crypto payments accepted
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Ambassador Tiers Section */}
+              🔗 Enhanced Referral System
+            </h2>
+            
             <div style={{
-              marginTop: '40px',
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
               padding: '32px',
-              background: 'linear-gradient(135deg, #fef7cd 0%, #fef3c7 100%)',
               borderRadius: '16px',
-              border: '2px solid #f59e0b'
+              border: '2px solid #22c55e',
+              marginBottom: '32px'
             }}>
-              <h3 style={{
-                color: '#92400e',
-                fontSize: '1.5rem',
-                fontWeight: '600',
-                marginBottom: '24px',
-                textAlign: 'center'
-              }}>
-                👑 Ambassador Program Tiers
+              <h3 style={{ color: '#15803d', marginBottom: '16px', fontSize: '1.5rem' }}>
+                💰 7% Commission Forever
               </h3>
+              <p style={{ color: '#166534', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '24px' }}>
+                Earn 7% of all points your referrals earn from any activity, for life! No limits, no expiration.
+              </p>
+              
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '20px'
               }}>
                 <div style={{
-                  background: 'linear-gradient(135deg, #cd7f32 0%, #b8860b 100%)',
+                  background: 'white',
                   padding: '20px',
                   borderRadius: '12px',
-                  color: 'white',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  border: '1px solid #bbf7d0'
                 }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🥉</div>
-                  <h4 style={{ margin: '0 0 8px 0' }}>Bronze</h4>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem' }}>10 referrals • 500 points • 5 posts</p>
-                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 'bold' }}>10% Bonus</p>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>👥</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>
+                    {referralStats.totalReferrals}
+                  </div>
+                  <div style={{ color: '#166534', fontSize: '14px' }}>Total Referrals</div>
                 </div>
                 
                 <div style={{
-                  background: 'linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%)',
+                  background: 'white',
                   padding: '20px',
                   borderRadius: '12px',
-                  color: 'white',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  border: '1px solid #bbf7d0'
                 }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🥈</div>
-                  <h4 style={{ margin: '0 0 8px 0' }}>Silver</h4>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem' }}>25 referrals • 1500 points • 15 posts</p>
-                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 'bold' }}>15% Bonus</p>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>💎</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>
+                    {referralStats.totalEarned.toFixed(1)}
+                  </div>
+                  <div style={{ color: '#166534', fontSize: '14px' }}>Points Earned</div>
                 </div>
                 
                 <div style={{
-                  background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)',
+                  background: 'white',
                   padding: '20px',
                   borderRadius: '12px',
-                  color: '#92400e',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  border: '1px solid #bbf7d0'
                 }}>
-                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🥇</div>
-                  <h4 style={{ margin: '0 0 8px 0' }}>Gold</h4>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '0.875rem' }}>50 referrals • 5000 points • 30 posts</p>
-                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 'bold' }}>25% Bonus</p>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📈</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>
+                    7%
+                  </div>
+                  <div style={{ color: '#166534', fontSize: '14px' }}>Commission Rate</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#f8fafc',
+              padding: '24px',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <h4 style={{ color: '#334155', marginBottom: '16px' }}>
+                🚀 How It Works
+              </h4>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '16px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '8px'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>📤</span>
+                  <div>
+                    <strong style={{ color: '#334155' }}>Share Your Link</strong>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
+                      Copy and share your unique referral link
+                    </p>
+                  </div>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '8px'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>👥</span>
+                  <div>
+                    <strong style={{ color: '#334155' }}>Friends Join</strong>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
+                      They sign up using your link
+                    </p>
+                  </div>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '8px'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>💰</span>
+                  <div>
+                    <strong style={{ color: '#334155' }}>Earn Forever</strong>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
+                      Get 7% of all their points, forever
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ambassador Program Tab */}
+        {activeTab === 'ambassadors' && (
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '40px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{
+              color: '#fbbf24',
+              marginBottom: '32px',
+              fontSize: '2.5rem',
+              fontWeight: '700',
+              textAlign: 'center'
+            }}>
+              👑 Ambassador Program
+            </h2>
+            
+            <div style={{
+              background: 'linear-gradient(135deg, #fef7cd 0%, #fef3c7 100%)',
+              padding: '32px',
+              borderRadius: '16px',
+              border: '2px solid #f59e0b',
+              marginBottom: '32px',
+              textAlign: 'center'
+            }}>
+              <h3 style={{ color: '#92400e', marginBottom: '16px' }}>
+                Your Current Tier: <span style={{ color: '#d97706' }}>
+                  {ambassadorTier === 'none' ? 'Not Qualified' : 
+                   ambassadorTier.charAt(0).toUpperCase() + ambassadorTier.slice(1)}
+                </span>
+              </h3>
+              <p style={{ color: '#a16207', fontSize: '1.1rem' }}>
+                Become an ambassador and earn exclusive bonuses on all your activities!
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '24px'
+            }}>
+              {/* Bronze Tier */}
+              <div style={{
+                background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+                padding: '32px',
+                borderRadius: '16px',
+                border: '2px solid #cd7f32',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🥉</div>
+                <h3 style={{ color: '#cd7f32', marginBottom: '16px', fontSize: '1.5rem' }}>
+                  Bronze Ambassador
+                </h3>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ color: '#7f1d1d', marginBottom: '8px' }}>Requirements:</div>
+                  <div style={{ color: '#991b1b', fontSize: '14px' }}>
+                    • 10 referrals<br/>
+                    • 500 points<br/>
+                    • 5 social posts
+                  </div>
+                </div>
+                <div style={{
+                  background: 'rgba(205, 127, 50, 0.2)',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  color: '#cd7f32',
+                  fontWeight: 'bold',
+                  fontSize: '1.2rem'
+                }}>
+                  10% Bonus on All Points
+                </div>
+              </div>
+
+              {/* Silver Tier */}
+              <div style={{
+                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                padding: '32px',
+                borderRadius: '16px',
+                border: '2px solid #c0c0c0',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🥈</div>
+                <h3 style={{ color: '#6b7280', marginBottom: '16px', fontSize: '1.5rem' }}>
+                  Silver Ambassador
+                </h3>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ color: '#374151', marginBottom: '8px' }}>Requirements:</div>
+                  <div style={{ color: '#4b5563', fontSize: '14px' }}>
+                    • 25 referrals<br/>
+                    • 1500 points<br/>
+                    • 15 social posts
+                  </div>
+                </div>
+                <div style={{
+                  background: 'rgba(192, 192, 192, 0.3)',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  color: '#6b7280',
+                  fontWeight: 'bold',
+                  fontSize: '1.2rem'
+                }}>
+                  15% Bonus on All Points
+                </div>
+              </div>
+
+              {/* Gold Tier */}
+              <div style={{
+                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                padding: '32px',
+                borderRadius: '16px',
+                border: '2px solid #ffd700',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🥇</div>
+                <h3 style={{ color: '#d97706', marginBottom: '16px', fontSize: '1.5rem' }}>
+                  Gold Ambassador
+                </h3>
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ color: '#92400e', marginBottom: '8px' }}>Requirements:</div>
+                  <div style={{ color: '#a16207', fontSize: '14px' }}>
+                    • 50 referrals<br/>
+                    • 5000 points<br/>
+                    • 30 social posts
+                  </div>
+                </div>
+                <div style={{
+                  background: 'rgba(255, 215, 0, 0.3)',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  color: '#d97706',
+                  fontWeight: 'bold',
+                  fontSize: '1.2rem'
+                }}>
+                  25% Bonus on All Points
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Social Media Points Tab */}
+        {activeTab === 'social' && (
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '40px',
+            border: '1px solid #e5e7eb',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{
+              color: '#3b82f6',
+              marginBottom: '32px',
+              fontSize: '2.5rem',
+              fontWeight: '700',
+              textAlign: 'center'
+            }}>
+              📱 Enhanced Social Media Points System
+            </h2>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '24px'
+            }}>
+              {/* Twitter */}
+              <div style={{
+                background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+                padding: '24px',
+                borderRadius: '16px',
+                border: '2px solid #1da1f2'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '2rem' }}>🐦</span>
+                  <h3 style={{ color: '#1e40af', margin: 0 }}>Twitter</h3>
+                </div>
+                <div style={{ color: '#1e3a8a', marginBottom: '16px' }}>
+                  <div><strong>3 points</strong> per tweet</div>
+                  <div><strong>0.05 points</strong> per engagement</div>
+                </div>
+                <div style={{
+                  background: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#1e40af'
+                }}>
+                  Posts: {socialStats.twitter.posts} | 
+                  Engagement: {socialStats.twitter.engagement} | 
+                  Points: {socialStats.twitter.points.toFixed(1)}
+                </div>
+              </div>
+
+              {/* Telegram */}
+              <div style={{
+                background: 'linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%)',
+                padding: '24px',
+                borderRadius: '16px',
+                border: '2px solid #0088cc'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '2rem' }}>📱</span>
+                  <h3 style={{ color: '#0277bd', margin: 0 }}>Telegram</h3>
+                </div>
+                <div style={{ color: '#01579b', marginBottom: '16px' }}>
+                  <div><strong>5 points</strong> per post</div>
+                  <div><strong>0.01 points</strong> per interaction</div>
+                </div>
+                <div style={{
+                  background: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#0277bd'
+                }}>
+                  Posts: {socialStats.telegram.posts} | 
+                  Engagement: {socialStats.telegram.engagement} | 
+                  Points: {socialStats.telegram.points.toFixed(1)}
+                </div>
+              </div>
+
+              {/* YouTube */}
+              <div style={{
+                background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)',
+                padding: '24px',
+                borderRadius: '16px',
+                border: '2px solid #ff0000'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '2rem' }}>📺</span>
+                  <h3 style={{ color: '#c62828', margin: 0 }}>YouTube</h3>
+                </div>
+                <div style={{ color: '#b71c1c', marginBottom: '16px' }}>
+                  <div><strong>17 points</strong> per video</div>
+                  <div><strong>0.3 points</strong> per engagement</div>
+                </div>
+                <div style={{
+                  background: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#c62828'
+                }}>
+                  Videos: {socialStats.youtube.videos} | 
+                  Engagement: {socialStats.youtube.engagement} | 
+                  Points: {socialStats.youtube.points.toFixed(1)}
+                </div>
+              </div>
+
+              {/* LinkedIn */}
+              <div style={{
+                background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                padding: '24px',
+                borderRadius: '16px',
+                border: '2px solid #0077b5'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '2rem' }}>💼</span>
+                  <h3 style={{ color: '#0d47a1', margin: 0 }}>LinkedIn</h3>
+                </div>
+                <div style={{ color: '#1565c0', marginBottom: '16px' }}>
+                  <div><strong>22 points</strong> per article</div>
+                  <div><strong>0.7 points</strong> per engagement</div>
+                </div>
+                <div style={{
+                  background: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#0d47a1'
+                }}>
+                  Articles: {socialStats.linkedin.articles} | 
+                  Engagement: {socialStats.linkedin.engagement} | 
+                  Points: {socialStats.linkedin.points.toFixed(1)}
                 </div>
               </div>
             </div>
