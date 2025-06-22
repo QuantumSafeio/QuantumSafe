@@ -1170,7 +1170,7 @@ export default function Dashboard(props) {
               WebkitTextFillColor: 'transparent',
               marginBottom: '8px'
             }}>
-              🔗 Your Referral Link
+              🔗 Your Enhanced Referral Link
             </h3>
             <p style={{
               color: 'rgba(255, 255, 255, 0.7)',
