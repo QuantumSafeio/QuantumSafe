@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { nhost } from '../lib/nhost';
+import { supabase } from '../lib/supabase';
 import { connectWallet } from '../services/wallet';
 import { signInWithEmailPassword, signUpWithEmailPassword } from '../hooks/nhostAuth';
 import WalletSecurityScanner from './WalletSecurityScanner';
@@ -113,31 +113,28 @@ export default function Login(props) {
     return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
   };
 
-  // GraphQL helper
-  async function gqlRequest(query, variables) {
-    return nhost.graphql.request(query, variables);
-  }
-
   // Example: Insert user profile
   async function insertUserProfile(user_id, wallet_address) {
-    const query = `mutation InsertUserProfile($user_id: uuid!, $wallet_address: String!) {
-      insert_user_profiles_one(object: {user_id: $user_id, wallet_address: $wallet_address}) {
-        user_id
-        wallet_address
-      }
-    }`;
-    return gqlRequest(query, { user_id, wallet_address });
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .insert({ user_id, wallet_address })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   // Example: Insert user points
   async function insertUserPoints(user_id, points) {
-    const query = `mutation InsertUserPoints($user_id: uuid!, $points: Int!) {
-      insert_user_points_one(object: {user_id: $user_id, points: $points}) {
-        user_id
-        points
-      }
-    }`;
-    return gqlRequest(query, { user_id, points });
+    const { data, error } = await supabase
+      .from('user_points')
+      .insert({ user_id, points })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   return (

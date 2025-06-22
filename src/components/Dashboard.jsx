@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { nhost } from '../lib/nhost';
+import { supabase } from '../lib/supabase';
 import { scanAsset } from '../services/scanner';
 import ScanResult from './ScanResult';
 import PromoTweets from './PromoTweets';
@@ -133,7 +133,7 @@ export default function Dashboard(props) {
         setTimeout(() => reject(new Error('Request timeout')), 15000)
       );
 
-      const profilePromise = nhost
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.id)
@@ -142,7 +142,7 @@ export default function Dashboard(props) {
       const { data: profile } = await Promise.race([profilePromise, timeout]);
       setUserProfile(profile);
 
-      const pointsPromise = nhost
+      const pointsPromise = supabase
         .from('user_points')
         .select('points')
         .eq('user_id', user.id)
@@ -151,7 +151,7 @@ export default function Dashboard(props) {
       const { data: points } = await Promise.race([pointsPromise, timeout]);
       setUserPoints(points?.points || 0);
 
-      const scansPromise = nhost
+      const scansPromise = supabase
         .from('scan_results')
         .select('*')
         .eq('user_id', user.id)
@@ -216,23 +216,27 @@ export default function Dashboard(props) {
       const scanPromise = scanAsset(selectedAssetType, assetInput.trim());
       const result = await Promise.race([scanPromise, scanTimeout]);
       
-      const { data: scanData, error: scanError } = await insertScanResult({
-        user_id: user.id,
-        asset_type: selectedAssetType,
-        asset_address: assetInput.trim(),
-        quantum_risk: result.quantumRisk.toLowerCase(),
-        vulnerabilities: result.details,
-        scanned_at: new Date().toISOString()
-      });
+      const { data: scanData, error: scanError } = await supabase
+        .from('scan_results')
+        .insert({
+          user_id: user.id,
+          asset_type: selectedAssetType,
+          asset_address: assetInput.trim(),
+          quantum_risk: result.quantumRisk.toLowerCase(),
+          vulnerabilities: result.details,
+          scanned_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
       if (scanError) throw scanError;
 
-      await nhost
+      await supabase
         .from('user_points')
         .update({ points: userPoints - 10 })
         .eq('user_id', user.id);
 
-      await nhost
+      await supabase
         .from('points_transactions')
         .insert({
           user_id: user.id,
@@ -249,7 +253,7 @@ export default function Dashboard(props) {
       setCurrentScanResult(result);
       
       if (userProfile) {
-        await nhost
+        await supabase
           .from('user_profiles')
           .update({ 
             total_scans: (userProfile.total_scans || 0) + 1,
@@ -898,24 +902,4 @@ export default function Dashboard(props) {
       <ToastContainer position="top-center" autoClose={4000} hideProgressBar newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
     </div>
   );
-}
-
-// GraphQL helper
-async function gqlRequest(query, variables) {
-  return nhost.graphql.request(query, variables);
-}
-
-// Example: Insert scan result
-async function insertScanResult(data) {
-  const query = `mutation InsertScanResult($object: scan_results_insert_input!) {
-    insert_scan_results_one(object: $object) {
-      id
-      asset_type
-      asset_address
-      quantum_risk
-      vulnerabilities
-      scanned_at
-    }
-  }`;
-  return gqlRequest(query, { object: data });
 }
