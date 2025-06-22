@@ -465,7 +465,7 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 		setLoading(false);
 	};
 
-	// Enhanced payment handler with proper wallet integration
+	// Enhanced payment handler with proper wallet integration and improved error handling
 	const handleSecure = async (e) => {
 		e.preventDefault();
 		
@@ -584,12 +584,19 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					
 				} catch (ethError) {
 					console.error('EVM transaction error:', ethError);
-					if (ethError.code === 4001) {
-						alert('Transaction was cancelled by user.');
+					
+					// Improved error handling for user-friendly messages
+					if (ethError.code === 4001 || ethError.code === 'ACTION_REJECTED' || ethError.reason === 'rejected') {
+						// User rejected the transaction - this is normal behavior
+						alert('❌ Transaction cancelled\n\nYou declined the transaction in your wallet. No payment was processed.\n\nTo complete your quantum security insurance, please try again and approve the transaction when prompted.');
 					} else if (ethError.code === -32603) {
-						alert('Transaction failed: Insufficient funds or network error.');
+						alert('❌ Transaction failed\n\nInsufficient funds or network error. Please check your wallet balance and try again.');
+					} else if (ethError.message && ethError.message.includes('insufficient funds')) {
+						alert(`❌ Insufficient funds\n\nYou need at least ${cryptoAmount} ${network.symbol} (≈$${insurancePrice.toLocaleString()}) to complete this transaction.\n\nPlease add funds to your wallet and try again.`);
+					} else if (ethError.message && ethError.message.includes('gas')) {
+						alert('❌ Gas estimation failed\n\nThere was an issue estimating gas fees. Please try again or check your network connection.');
 					} else {
-						alert(`Transaction failed: ${ethError.message || 'Unknown error'}`);
+						alert(`❌ Transaction failed\n\n${ethError.message || 'An unexpected error occurred. Please try again.'}`);
 					}
 					setPaying(false);
 					return;
@@ -630,10 +637,12 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					
 				} catch (solError) {
 					console.error('Solana transaction error:', solError);
-					if (solError.code === 4001) {
-						alert('Transaction was cancelled by user.');
+					
+					// Improved error handling for Solana
+					if (solError.code === 4001 || solError.message?.includes('User rejected')) {
+						alert('❌ Transaction cancelled\n\nYou declined the transaction in Phantom wallet. No payment was processed.\n\nTo complete your quantum security insurance, please try again and approve the transaction when prompted.');
 					} else {
-						alert(`Solana transaction failed: ${solError.message || 'Unknown error'}`);
+						alert(`❌ Solana transaction failed\n\n${solError.message || 'An unexpected error occurred. Please try again.'}`);
 					}
 					setPaying(false);
 					return;
@@ -663,7 +672,13 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 			
 		} catch (err) {
 			console.error('Payment Error:', err);
-			alert(`Payment failed: ${err.message || 'Unknown error occurred'}`);
+			
+			// General error handling with user-friendly messages
+			if (err.code === 4001 || err.reason === 'rejected') {
+				alert('❌ Transaction cancelled\n\nYou declined the transaction in your wallet. No payment was processed.');
+			} else {
+				alert(`❌ Payment failed\n\n${err.message || 'An unexpected error occurred. Please try again.'}`);
+			}
 		} finally {
 			setPaying(false);
 		}
