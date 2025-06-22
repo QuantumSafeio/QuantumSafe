@@ -49,6 +49,7 @@ export default function Dashboard(props) {
   const [web3Address, setWeb3Address] = useState('');
   const [web3Network, setWeb3Network] = useState('');
   const [currentNetworkType, setCurrentNetworkType] = useState('ETH');
+  const [walletConnecting, setWalletConnecting] = useState(false);
 
   // Network configurations for real wallet integration
   const SUPPORTED_NETWORKS = {
@@ -56,29 +57,38 @@ export default function Dashboard(props) {
       name: 'Ethereum',
       symbol: 'ETH',
       chainId: 1,
-      rpcUrl: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'
+      rpcUrl: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
+      icon: '⟠'
     },
     MATIC: {
       name: 'Polygon',
       symbol: 'MATIC', 
       chainId: 137,
-      rpcUrl: 'https://polygon-rpc.com'
+      rpcUrl: 'https://polygon-rpc.com',
+      icon: '⬟'
     },
     BNB: {
       name: 'BSC',
       symbol: 'BNB',
       chainId: 56,
-      rpcUrl: 'https://bsc-dataseed.binance.org'
+      rpcUrl: 'https://bsc-dataseed.binance.org',
+      icon: '🟡'
     }
   };
 
   // Enhanced wallet connection with real network detection
   const handleConnectWallet = async () => {
+    if (walletConnecting) return;
+    
+    setWalletConnecting(true);
     try {
       if (!window.ethereum) {
         toast.error('MetaMask is required. Please install MetaMask from metamask.io');
         return;
       }
+
+      // Request account access
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
 
       const web3modal = new Web3Modal({
         cacheProvider: true,
@@ -93,18 +103,24 @@ export default function Dashboard(props) {
       
       // Detect actual network
       let networkSymbol = 'ETH';
+      let networkName = 'Ethereum';
+      
       switch (Number(network.chainId)) {
         case 1:
           networkSymbol = 'ETH';
+          networkName = 'Ethereum';
           break;
         case 137:
           networkSymbol = 'MATIC';
+          networkName = 'Polygon';
           break;
         case 56:
           networkSymbol = 'BNB';
+          networkName = 'BSC';
           break;
         default:
           networkSymbol = 'ETH';
+          networkName = 'Ethereum';
       }
       
       setWeb3Provider(provider);
@@ -114,9 +130,9 @@ export default function Dashboard(props) {
       setConnectedWalletAddress(address);
       setConnectedNetworkSymbol(networkSymbol);
       
-      toast.success(`Connected to ${SUPPORTED_NETWORKS[networkSymbol]?.name || 'Unknown'} network`);
+      toast.success(`Connected to ${networkName} network`);
       
-      // Listen for network changes
+      // Listen for network and account changes
       if (window.ethereum) {
         window.ethereum.on('chainChanged', handleChainChanged);
         window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -126,9 +142,13 @@ export default function Dashboard(props) {
       console.error('Wallet connection error:', err);
       if (err.code === 4001) {
         toast.warn('Wallet connection cancelled by user');
+      } else if (err.code === -32002) {
+        toast.warn('MetaMask is already processing a request. Please check MetaMask.');
       } else {
         toast.error('Failed to connect wallet. Please try again.');
       }
+    } finally {
+      setWalletConnecting(false);
     }
   };
 
@@ -137,19 +157,24 @@ export default function Dashboard(props) {
     try {
       const chainIdNum = parseInt(chainId, 16);
       let networkSymbol = 'ETH';
+      let networkName = 'Ethereum';
       
       switch (chainIdNum) {
         case 1:
           networkSymbol = 'ETH';
+          networkName = 'Ethereum';
           break;
         case 137:
           networkSymbol = 'MATIC';
+          networkName = 'Polygon';
           break;
         case 56:
           networkSymbol = 'BNB';
+          networkName = 'BSC';
           break;
         default:
           networkSymbol = 'ETH';
+          networkName = 'Ethereum';
       }
       
       setWeb3Network(networkSymbol);
@@ -162,7 +187,7 @@ export default function Dashboard(props) {
         setWeb3Provider(newProvider);
       }
       
-      toast.info(`Switched to ${SUPPORTED_NETWORKS[networkSymbol]?.name || 'Unknown'} network`);
+      toast.info(`Switched to ${networkName} network`);
     } catch (error) {
       console.error('Error handling chain change:', error);
     }
@@ -177,6 +202,7 @@ export default function Dashboard(props) {
       setWeb3Network('');
       setConnectedWalletAddress('');
       setConnectedNetworkSymbol('');
+      setCurrentNetworkType('ETH');
       toast.warn('Wallet disconnected');
     } else {
       // User switched accounts
@@ -579,24 +605,42 @@ export default function Dashboard(props) {
                   color: '#16a34a',
                   fontWeight: '600'
                 }}>
-                  {currentNetworkType} Connected
+                  {SUPPORTED_NETWORKS[currentNetworkType]?.icon} {currentNetworkType} Connected
                 </span>
               </div>
             ) : (
               <button
                 onClick={handleConnectWallet}
+                disabled={walletConnecting}
                 style={{
                   padding: '8px 16px',
-                  background: '#6366f1',
+                  background: walletConnecting ? '#9ca3af' : '#6366f1',
                   border: 'none',
                   borderRadius: '8px',
                   color: 'white',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: 'pointer'
+                  cursor: walletConnecting ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
                 }}
               >
-                Connect Wallet
+                {walletConnecting ? (
+                  <>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      border: '2px solid rgba(255, 255, 255, 0.3)',
+                      borderTop: '2px solid white',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    Connecting...
+                  </>
+                ) : (
+                  'Connect Wallet'
+                )}
               </button>
             )}
             
@@ -784,7 +828,7 @@ export default function Dashboard(props) {
                     fontWeight: '600',
                     fontSize: '16px'
                   }}>
-                    Wallet Connected - {currentNetworkType} Network
+                    Wallet Connected - {SUPPORTED_NETWORKS[currentNetworkType]?.name} Network
                   </span>
                 </div>
                 <div style={{
