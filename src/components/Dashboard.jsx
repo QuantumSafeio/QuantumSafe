@@ -11,8 +11,6 @@ import { ethers } from 'ethers';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// --- Web3Modal Integration ---
-
 export default function Dashboard(props) {
   const { user, signOut } = useAuth();
   const [userProfile, setUserProfile] = useState(null);
@@ -44,33 +42,147 @@ export default function Dashboard(props) {
     riskReduction: 0
   });
 
-  // Wallet connection state
+  // Enhanced wallet connection state
   const [connectedWalletAddress, setConnectedWalletAddress] = useState('');
   const [connectedNetworkSymbol, setConnectedNetworkSymbol] = useState('');
-
-  // Web3Modal state
   const [web3Provider, setWeb3Provider] = useState(null);
   const [web3Address, setWeb3Address] = useState('');
   const [web3Network, setWeb3Network] = useState('');
+  const [currentNetworkType, setCurrentNetworkType] = useState('ETH');
 
-  // Connect wallet handler
+  // Network configurations for real wallet integration
+  const SUPPORTED_NETWORKS = {
+    ETH: {
+      name: 'Ethereum',
+      symbol: 'ETH',
+      chainId: 1,
+      rpcUrl: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'
+    },
+    MATIC: {
+      name: 'Polygon',
+      symbol: 'MATIC', 
+      chainId: 137,
+      rpcUrl: 'https://polygon-rpc.com'
+    },
+    BNB: {
+      name: 'BSC',
+      symbol: 'BNB',
+      chainId: 56,
+      rpcUrl: 'https://bsc-dataseed.binance.org'
+    }
+  };
+
+  // Enhanced wallet connection with real network detection
   const handleConnectWallet = async () => {
     try {
+      if (!window.ethereum) {
+        toast.error('MetaMask is required. Please install MetaMask from metamask.io');
+        return;
+      }
+
       const web3modal = new Web3Modal({
         cacheProvider: true,
         providerOptions: {}
       });
+      
       const instance = await web3modal.connect();
-      const provider = new ethers.providers.Web3Provider(instance);
-      const signer = provider.getSigner();
+      const provider = new ethers.BrowserProvider(instance);
+      const signer = await provider.getSigner();
       const address = await signer.getAddress();
       const network = await provider.getNetwork();
+      
+      // Detect actual network
+      let networkSymbol = 'ETH';
+      switch (Number(network.chainId)) {
+        case 1:
+          networkSymbol = 'ETH';
+          break;
+        case 137:
+          networkSymbol = 'MATIC';
+          break;
+        case 56:
+          networkSymbol = 'BNB';
+          break;
+        default:
+          networkSymbol = 'ETH';
+      }
+      
       setWeb3Provider(provider);
-      console.log('Web3Provider set:', provider);
       setWeb3Address(address);
-      setWeb3Network(network.name.toUpperCase());
+      setWeb3Network(networkSymbol);
+      setCurrentNetworkType(networkSymbol);
+      setConnectedWalletAddress(address);
+      setConnectedNetworkSymbol(networkSymbol);
+      
+      toast.success(`Connected to ${SUPPORTED_NETWORKS[networkSymbol]?.name || 'Unknown'} network`);
+      
+      // Listen for network changes
+      if (window.ethereum) {
+        window.ethereum.on('chainChanged', handleChainChanged);
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+      }
+      
     } catch (err) {
-      alert('Wallet connection cancelled or failed.');
+      console.error('Wallet connection error:', err);
+      if (err.code === 4001) {
+        toast.warn('Wallet connection cancelled by user');
+      } else {
+        toast.error('Failed to connect wallet. Please try again.');
+      }
+    }
+  };
+
+  // Handle network changes
+  const handleChainChanged = async (chainId) => {
+    try {
+      const chainIdNum = parseInt(chainId, 16);
+      let networkSymbol = 'ETH';
+      
+      switch (chainIdNum) {
+        case 1:
+          networkSymbol = 'ETH';
+          break;
+        case 137:
+          networkSymbol = 'MATIC';
+          break;
+        case 56:
+          networkSymbol = 'BNB';
+          break;
+        default:
+          networkSymbol = 'ETH';
+      }
+      
+      setWeb3Network(networkSymbol);
+      setCurrentNetworkType(networkSymbol);
+      setConnectedNetworkSymbol(networkSymbol);
+      
+      // Update provider
+      if (web3Provider) {
+        const newProvider = new ethers.BrowserProvider(window.ethereum);
+        setWeb3Provider(newProvider);
+      }
+      
+      toast.info(`Switched to ${SUPPORTED_NETWORKS[networkSymbol]?.name || 'Unknown'} network`);
+    } catch (error) {
+      console.error('Error handling chain change:', error);
+    }
+  };
+
+  // Handle account changes
+  const handleAccountsChanged = async (accounts) => {
+    if (accounts.length === 0) {
+      // User disconnected wallet
+      setWeb3Provider(null);
+      setWeb3Address('');
+      setWeb3Network('');
+      setConnectedWalletAddress('');
+      setConnectedNetworkSymbol('');
+      toast.warn('Wallet disconnected');
+    } else {
+      // User switched accounts
+      setWeb3Address(accounts[0]);
+      setConnectedWalletAddress(accounts[0]);
+      toast.info('Account switched');
     }
   };
 
@@ -82,35 +194,26 @@ export default function Dashboard(props) {
   }, [user]);
 
   useEffect(() => {
+    // Auto-connect if previously connected
     const initWeb3 = async () => {
       try {
-        const web3modal = new Web3Modal({
-          cacheProvider: true,
-          providerOptions: {}
-        });
-        const instance = await web3modal.connect();
-        const provider = new ethers.providers.Web3Provider(instance);
-        const signer = provider.getSigner();
-        const address = await signer.getAddress();
-        const network = await provider.getNetwork();
-        setWeb3Provider(provider);
-        setWeb3Address(address);
-        setWeb3Network(network.name.toUpperCase());
+        if (window.ethereum && window.ethereum.selectedAddress) {
+          await handleConnectWallet();
+        }
       } catch (err) {
-        // fallback to old logic if user cancels
+        console.log('Auto-connect failed:', err);
       }
     };
     initWeb3();
-  }, []);
 
-  useEffect(() => {
-    if (!web3Provider && (web3Address || web3Network)) {
-      setWeb3Address('');
-      setWeb3Network('');
-      setCurrentScanResult(null);
-      toast.warn('Wallet disconnected. Please reconnect your wallet.');
-    }
-  }, [web3Provider]);
+    // Cleanup event listeners
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      }
+    };
+  }, []);
 
   const generateReferralLink = () => {
     const baseUrl = window.location.origin + window.location.pathname;
@@ -195,12 +298,12 @@ export default function Dashboard(props) {
 
   const handleScan = async () => {
     if (!assetInput.trim()) {
-      alert('Please enter an asset address to scan');
+      toast.error('Please enter an asset address to scan');
       return;
     }
 
     if (userPoints < 10) {
-      alert('You need at least 10 points to perform a scan');
+      toast.error('You need at least 10 points to perform a scan');
       return;
     }
 
@@ -213,7 +316,13 @@ export default function Dashboard(props) {
         setTimeout(() => reject(new Error('Scan timeout')), 30000)
       );
 
-      const scanPromise = scanAsset(selectedAssetType, assetInput.trim());
+      // Pass wallet and network info for unique scanning
+      const scanPromise = scanAsset(
+        selectedAssetType, 
+        assetInput.trim(),
+        web3Address || connectedWalletAddress,
+        currentNetworkType
+      );
       const result = await Promise.race([scanPromise, scanTimeout]);
       
       const { data: scanData, error: scanError } = await supabase
@@ -245,7 +354,9 @@ export default function Dashboard(props) {
           metadata: {
             asset_type: selectedAssetType,
             asset_address: assetInput.trim(),
-            scan_id: scanData.id
+            scan_id: scanData.id,
+            network_type: currentNetworkType,
+            wallet_address: web3Address || connectedWalletAddress
           }
         });
 
@@ -268,10 +379,12 @@ export default function Dashboard(props) {
       }
 
       fetchUserData();
+      toast.success('Scan completed successfully!');
       
     } catch (error) {
       console.error('Scan error:', error);
       setError('Failed to perform scan. Please try again.');
+      toast.error('Scan failed. Please try again.');
     } finally {
       setScanning(false);
     }
@@ -284,6 +397,7 @@ export default function Dashboard(props) {
 
   const handlePaymentSuccess = (paymentResult) => {
     console.log('Payment successful:', paymentResult);
+    toast.success('Payment completed successfully!');
     fetchUserData();
   };
 
@@ -437,12 +551,55 @@ export default function Dashboard(props) {
             </h1>
           </div>
 
-          {/* User Info */}
+          {/* User Info & Wallet Status */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '16px'
           }}>
+            {/* Wallet Connection Status */}
+            {web3Address ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px'
+              }}>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  background: '#16a34a',
+                  borderRadius: '50%'
+                }} />
+                <span style={{
+                  fontSize: '12px',
+                  color: '#16a34a',
+                  fontWeight: '600'
+                }}>
+                  {currentNetworkType} Connected
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={handleConnectWallet}
+                style={{
+                  padding: '8px 16px',
+                  background: '#6366f1',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Connect Wallet
+              </button>
+            )}
+            
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -601,6 +758,45 @@ export default function Dashboard(props) {
               Analyze your digital assets for quantum vulnerabilities
             </p>
 
+            {/* Wallet Connection Status in Scanner */}
+            {web3Address && (
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '8px'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    background: '#16a34a',
+                    borderRadius: '50%'
+                  }} />
+                  <span style={{
+                    color: '#16a34a',
+                    fontWeight: '600',
+                    fontSize: '16px'
+                  }}>
+                    Wallet Connected - {currentNetworkType} Network
+                  </span>
+                </div>
+                <div style={{
+                  color: '#15803d',
+                  fontSize: '14px',
+                  fontFamily: 'monospace'
+                }}>
+                  {web3Address}
+                </div>
+              </div>
+            )}
+
             {/* Asset Type Selection */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{
@@ -694,7 +890,7 @@ export default function Dashboard(props) {
               ) : userPoints < 10 ? (
                 'Insufficient Points (Need 10 points)'
               ) : (
-                'Start Scan (10 points)'
+                'Start Quantum Scan (10 points)'
               )}
             </button>
 
@@ -867,7 +1063,6 @@ export default function Dashboard(props) {
         {/* Wallet Security Scanner */}
         {web3Address && web3Network && (
           <div style={{ marginTop: '32px' }}>
-            <h2 style={{ color: '#4f8cff', marginBottom: '16px' }}>Scan your wallet</h2>
             <WalletSecurityScanner
               walletAddress={web3Address}
               networkKey={web3Network}
@@ -875,31 +1070,29 @@ export default function Dashboard(props) {
             />
           </div>
         )}
-
-        {/* Wallet Connect Button */}
-        {!web3Address && (
-          <div style={{ textAlign: 'center', margin: '32px 0' }}>
-            <button
-              onClick={handleConnectWallet}
-              style={{
-                padding: '16px 32px',
-                fontSize: '18px',
-                borderRadius: '10px',
-                background: 'linear-gradient(90deg, #4f8cff, #52c41a)',
-                color: '#fff',
-                fontWeight: 'bold',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 4px 16px #4f8cff33'
-              }}
-            >
-              Connect Wallet
-            </button>
-          </div>
-        )}
       </div>
 
-      <ToastContainer position="top-center" autoClose={4000} hideProgressBar newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+      <ToastContainer 
+        position="top-center" 
+        autoClose={4000} 
+        hideProgressBar 
+        newestOnTop 
+        closeOnClick 
+        pauseOnFocusLoss 
+        draggable 
+        pauseOnHover 
+      />
+      
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

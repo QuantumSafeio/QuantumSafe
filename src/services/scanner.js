@@ -1,21 +1,41 @@
-// Enhanced digital asset quantum threat scanning service
+// Enhanced digital asset quantum threat scanning service with unique results
 
-export async function scanAsset(assetType, assetInput) {
+export async function scanAsset(assetType, assetInput, userWallet = '', networkType = '') {
   // Simulate realistic scan delay
   await new Promise((resolve) => setTimeout(resolve, 2500));
+
+  // Create unique seed from multiple factors for truly unique results
+  const timestamp = Date.now();
+  const userAgent = navigator.userAgent;
+  const randomSeed = Math.random();
+  const uniqueSeed = `${assetInput}-${userWallet}-${networkType}-${timestamp}-${userAgent}-${randomSeed}`;
+  
+  // Generate hash from unique seed
+  let hash = 0;
+  for (let i = 0; i < uniqueSeed.length; i++) {
+    const char = uniqueSeed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  const hashAbs = Math.abs(hash);
 
   // Enhanced vulnerability database with more detailed information
   const vulnerabilityDatabase = {
     contract: [
       {
-        vuln: "Shor's Algorithm Vulnerability",
+        vuln: "Shor's Algorithm Vulnerability in ECDSA Signatures",
         risk: 'High',
-        description: 'Smart contract uses ECDSA encryption that can be broken by quantum computers using Shor\'s algorithm, compromising all digital signatures'
+        description: 'Smart contract uses ECDSA encryption that can be broken by quantum computers using Shor\'s algorithm, compromising all digital signatures within 2-5 years'
       },
       {
-        vuln: "Grover's Algorithm Weakness",
+        vuln: "Grover's Algorithm Hash Function Weakness",
         risk: 'High',
-        description: 'Hash functions used are vulnerable to Grover\'s algorithm attacks, reducing effective security by half'
+        description: 'Hash functions used are vulnerable to Grover\'s algorithm attacks, reducing effective security by half and enabling collision attacks'
+      },
+      {
+        vuln: "Legacy RSA Key Exchange Protocol",
+        risk: 'High',
+        description: 'Contract relies on RSA key exchange which is completely vulnerable to quantum factorization algorithms'
       },
       {
         vuln: "No Post-Quantum Signature Support",
@@ -23,162 +43,225 @@ export async function scanAsset(assetType, assetInput) {
         description: 'Contract does not support quantum-resistant signature schemes like CRYSTALS-Dilithium or FALCON'
       },
       {
-        vuln: "Legacy Cryptographic Implementation",
+        vuln: "Quantum-Unsafe Random Number Generation",
         risk: 'Medium',
-        description: 'Uses outdated cryptographic methods vulnerable to quantum attacks, requires immediate upgrade'
+        description: 'Random number generation uses predictable entropy sources vulnerable to quantum algorithms'
       },
       {
-        vuln: "Quantum-Unsafe Key Derivation",
-        risk: 'High',
-        description: 'Key derivation functions are not quantum-resistant and can be compromised'
+        vuln: "Vulnerable Merkle Tree Implementation",
+        risk: 'Medium',
+        description: 'Merkle tree structures use SHA-256 which is susceptible to Grover\'s algorithm speedup'
       },
       {
-        vuln: "Predictable Random Number Generation",
-        risk: 'Medium',
-        description: 'Random number generation may be predictable to quantum algorithms'
+        vuln: "Insecure Key Derivation Functions",
+        risk: 'Low',
+        description: 'Key derivation process lacks quantum-resistant entropy and could be predicted'
+      },
+      {
+        vuln: "Legacy Cryptographic Libraries",
+        risk: 'Low',
+        description: 'Uses outdated cryptographic libraries without post-quantum security updates'
       }
     ],
     wallet: [
       {
-        vuln: "RSA/ECDSA Keys Not Quantum-Safe",
+        vuln: "ECDSA Private Key Vulnerability",
         risk: 'High',
-        description: 'Wallet uses encryption keys that can be broken by quantum computers within hours'
+        description: 'Wallet private keys use ECDSA which can be broken by quantum computers within hours using Shor\'s algorithm'
       },
       {
-        vuln: "No Quantum Migration Strategy",
-        risk: 'Medium',
-        description: 'Wallet lacks a plan for transitioning to quantum-resistant encryption'
-      },
-      {
-        vuln: "Predictable Key Generation",
-        risk: 'Medium',
-        description: 'Key generation process may be predictable to quantum algorithms'
-      },
-      {
-        vuln: "Vulnerable Seed Phrase Generation",
+        vuln: "Quantum-Vulnerable Seed Phrase Generation",
         risk: 'High',
-        description: 'Seed phrase generation uses quantum-vulnerable entropy sources'
+        description: 'Seed phrase generation uses entropy sources that are predictable to quantum algorithms'
       },
       {
-        vuln: "Insecure Key Storage",
+        vuln: "HD Wallet Derivation Path Exposure",
+        risk: 'Medium',
+        description: 'Hierarchical deterministic wallet paths are vulnerable to quantum cryptanalysis'
+      },
+      {
+        vuln: "Multi-Signature Quantum Weakness",
+        risk: 'Medium',
+        description: 'Multi-signature schemes rely on quantum-vulnerable cryptographic primitives'
+      },
+      {
+        vuln: "Insecure Backup Mechanisms",
+        risk: 'Medium',
+        description: 'Wallet backup and recovery systems lack quantum-resistant encryption'
+      },
+      {
+        vuln: "Hardware Wallet Firmware Vulnerability",
         risk: 'Low',
-        description: 'Private keys stored without quantum-resistant encryption'
+        description: 'Hardware wallet firmware not updated for post-quantum cryptography'
+      },
+      {
+        vuln: "Weak Entropy Collection",
+        risk: 'Low',
+        description: 'Random number generation for key creation uses insufficient entropy sources'
       }
     ],
     nft: [
       {
-        vuln: "Centralized Metadata Storage",
+        vuln: "Metadata Integrity Quantum Vulnerability",
         risk: 'Medium',
-        description: 'Metadata is stored centrally and vulnerable to quantum-powered attacks'
+        description: 'NFT metadata verification uses hash functions vulnerable to quantum collision attacks'
       },
       {
-        vuln: "Weak Verification Mechanism",
-        risk: 'Low',
-        description: 'Authenticity verification mechanism may be vulnerable to quantum attacks'
-      },
-      {
-        vuln: "Non-Upgradeable Contract",
-        risk: 'Low',
-        description: 'Contract cannot be upgraded to quantum-resistant standards'
-      },
-      {
-        vuln: "Quantum-Unsafe Ownership Proofs",
+        vuln: "Ownership Proof Signature Weakness",
         risk: 'Medium',
-        description: 'Ownership verification uses quantum-vulnerable cryptographic proofs'
+        description: 'NFT ownership verification relies on ECDSA signatures breakable by quantum computers'
+      },
+      {
+        vuln: "Centralized Metadata Storage Risk",
+        risk: 'Medium',
+        description: 'Metadata stored centrally without quantum-resistant access controls'
+      },
+      {
+        vuln: "Cross-Chain Bridge Vulnerability",
+        risk: 'Low',
+        description: 'NFT cross-chain transfers use quantum-vulnerable cryptographic protocols'
+      },
+      {
+        vuln: "Royalty Distribution Quantum Risk",
+        risk: 'Low',
+        description: 'Smart contracts handling royalties lack quantum-resistant security measures'
+      },
+      {
+        vuln: "Provenance Tracking Weakness",
+        risk: 'Low',
+        description: 'NFT history tracking uses legacy cryptographic methods'
       }
     ],
     memecoin: [
       {
-        vuln: "No Quantum Protection",
+        vuln: "Consensus Mechanism Quantum Vulnerability",
         risk: 'Medium',
-        description: 'Token lacks protection against future quantum attacks on its consensus mechanism'
+        description: 'Token consensus protocol susceptible to quantum-enhanced 51% attacks'
       },
       {
-        vuln: "Weak Consensus Protocol",
-        risk: 'Low',
-        description: 'Consensus protocol may be vulnerable to quantum manipulation'
-      },
-      {
-        vuln: "Insufficient Cryptographic Diversity",
-        risk: 'Low',
-        description: 'Relies on single cryptographic method vulnerable to quantum attacks'
-      },
-      {
-        vuln: "Quantum-Vulnerable Mining Algorithm",
+        vuln: "Mining Algorithm Quantum Speedup Risk",
         risk: 'Medium',
-        description: 'Mining or validation algorithm susceptible to quantum speedup attacks'
+        description: 'Proof-of-work algorithm vulnerable to quantum mining acceleration'
+      },
+      {
+        vuln: "Token Economics Manipulation",
+        risk: 'Low',
+        description: 'Economic calculations could be manipulated using quantum computational advantages'
+      },
+      {
+        vuln: "Governance Voting Vulnerability",
+        risk: 'Low',
+        description: 'Voting mechanisms use quantum-vulnerable signature schemes'
+      },
+      {
+        vuln: "Cross-Platform Bridge Risk",
+        risk: 'Low',
+        description: 'Token bridges between networks lack quantum-safe protocols'
       }
     ],
     app: [
       {
-        vuln: "Unencrypted Sensitive Data",
+        vuln: "API Authentication Quantum Weakness",
         risk: 'High',
-        description: 'Application does not use quantum-resistant encryption for sensitive user data'
+        description: 'Application APIs use RSA/ECDSA authentication vulnerable to quantum attacks'
       },
       {
-        vuln: "Communication Layer Vulnerabilities",
-        risk: 'Medium',
-        description: 'Communication protocols are not protected against quantum eavesdropping'
-      },
-      {
-        vuln: "Weak Authentication System",
-        risk: 'Medium',
-        description: 'Authentication system vulnerable to quantum cryptanalysis'
-      },
-      {
-        vuln: "Insecure API Endpoints",
+        vuln: "Database Encryption Vulnerability",
         risk: 'High',
-        description: 'API endpoints use quantum-vulnerable encryption and authentication'
+        description: 'User data encrypted with AES keys derivable through quantum cryptanalysis'
       },
       {
-        vuln: "No Forward Secrecy",
+        vuln: "Session Management Quantum Risk",
+        risk: 'Medium',
+        description: 'Session tokens generated using quantum-vulnerable random number generators'
+      },
+      {
+        vuln: "Communication Protocol Weakness",
+        risk: 'Medium',
+        description: 'TLS/SSL connections not upgraded to post-quantum cryptographic standards'
+      },
+      {
+        vuln: "Third-Party Integration Risk",
+        risk: 'Medium',
+        description: 'External service integrations lack quantum-resistant authentication'
+      },
+      {
+        vuln: "Client-Side Encryption Vulnerability",
         risk: 'Low',
-        description: 'Application lacks forward secrecy, making past communications vulnerable'
+        description: 'Frontend encryption implementations use quantum-unsafe algorithms'
+      },
+      {
+        vuln: "Logging System Quantum Exposure",
+        risk: 'Low',
+        description: 'Application logs stored without quantum-resistant encryption'
       }
     ]
   };
 
-  // Select vulnerabilities based on asset type
-  const possibleVulns = vulnerabilityDatabase[assetType] || [];
+  // Select vulnerabilities based on asset type and unique factors
+  const possibleVulns = vulnerabilityDatabase[assetType] || vulnerabilityDatabase.memecoin;
   
-  // Randomly select 2-5 vulnerabilities for more realistic results
-  const numVulns = Math.floor(Math.random() * 4) + 2;
+  // Generate unique number of vulnerabilities based on hash
+  const baseVulnCount = 2;
+  const hashBasedCount = (hashAbs % 4) + 1; // 1-4 additional vulns
+  const numVulns = Math.min(baseVulnCount + hashBasedCount, possibleVulns.length);
+  
   const selectedVulns = [];
+  const usedIndices = new Set();
   
-  const shuffled = [...possibleVulns].sort(() => 0.5 - Math.random());
-  for (let i = 0; i < numVulns && i < shuffled.length; i++) {
-    selectedVulns.push(shuffled[i]);
+  // Select vulnerabilities based on hash to ensure uniqueness
+  for (let i = 0; i < numVulns; i++) {
+    let index = (hashAbs + i * 7 + timestamp) % possibleVulns.length;
+    while (usedIndices.has(index)) {
+      index = (index + 1) % possibleVulns.length;
+    }
+    usedIndices.add(index);
+    selectedVulns.push(possibleVulns[index]);
   }
 
-  // Determine overall risk level with improved logic
+  // Determine overall risk level with improved logic based on unique factors
   let quantumRisk = 'Low';
   const highRiskCount = selectedVulns.filter(v => v.risk === 'High').length;
   const mediumRiskCount = selectedVulns.filter(v => v.risk === 'Medium').length;
+  
+  // Risk calculation based on asset type and vulnerabilities
+  const assetRiskMultiplier = {
+    contract: 1.4,
+    app: 1.3,
+    wallet: 1.2,
+    nft: 0.9,
+    memecoin: 0.8
+  };
+  
+  const baseRiskScore = (hashAbs % 50) + 20; // 20-69 base score
+  const vulnRiskScore = (highRiskCount * 25) + (mediumRiskCount * 15) + (selectedVulns.length * 5);
+  const assetMultiplier = assetRiskMultiplier[assetType] || 1.0;
+  const networkBonus = networkType === 'ETH' ? 10 : networkType === 'BTC' ? -5 : 0;
+  
+  const finalRiskScore = Math.min(95, Math.max(5, 
+    Math.floor((baseRiskScore + vulnRiskScore) * assetMultiplier) + networkBonus
+  ));
 
-  if (highRiskCount >= 2) {
+  // Determine risk level based on final score
+  if (finalRiskScore >= 70) {
     quantumRisk = 'High';
-  } else if (highRiskCount >= 1 || mediumRiskCount >= 3) {
+  } else if (finalRiskScore >= 40) {
     quantumRisk = 'Medium';
-  } else if (mediumRiskCount >= 1) {
+  } else {
     quantumRisk = 'Low';
   }
 
-  // Asset-specific risk adjustments
-  if (assetType === 'contract' || assetType === 'app') {
-    if (highRiskCount > 0) quantumRisk = 'High';
-    else if (mediumRiskCount > 0) quantumRisk = 'Medium';
-  }
+  // Generate unique confidence score
+  const baseConfidence = 85;
+  const assetComplexity = assetType === 'contract' || assetType === 'app' ? 8 : 5;
+  const dataQuality = assetInput.length > 20 ? 5 : 2;
+  const networkReliability = networkType === 'ETH' ? 4 : 2;
+  const confidence = Math.min(99, Math.max(80, 
+    baseConfidence + assetComplexity + dataQuality + networkReliability + (hashAbs % 6)
+  ));
 
-  // Add some controlled randomness for realism
-  if (Math.random() < 0.15) {
-    const riskLevels = ['Low', 'Medium', 'High'];
-    const currentIndex = riskLevels.indexOf(quantumRisk);
-    if (currentIndex > 0 && Math.random() < 0.5) {
-      quantumRisk = riskLevels[currentIndex - 1];
-    } else if (currentIndex < 2 && Math.random() < 0.3) {
-      quantumRisk = riskLevels[currentIndex + 1];
-    }
-  }
+  // Generate unique scan ID
+  const scanId = `QS-${timestamp.toString(36).toUpperCase()}-${hashAbs.toString(36).toUpperCase().slice(0, 8)}`;
 
   return {
     asset: assetInput,
@@ -186,24 +269,18 @@ export async function scanAsset(assetType, assetInput) {
     quantumRisk,
     details: selectedVulns,
     scannedAt: new Date().toISOString(),
-    scanId: `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    confidence: Math.floor(Math.random() * 15) + 85, // 85-99% confidence
+    scanId,
+    confidence,
     recommendations: generateRecommendations(selectedVulns, assetType, quantumRisk),
-    riskScore: calculateRiskScore(selectedVulns),
-    estimatedTimeToQuantumThreat: estimateQuantumThreatTimeline(quantumRisk)
-  };
-}
-
-function calculateRiskScore(vulnerabilities) {
-  let score = 0;
-  vulnerabilities.forEach(vuln => {
-    switch (vuln.risk) {
-      case 'High': score += 30; break;
-      case 'Medium': score += 15; break;
-      case 'Low': score += 5; break;
+    riskScore: finalRiskScore,
+    estimatedTimeToQuantumThreat: estimateQuantumThreatTimeline(quantumRisk),
+    networkType: networkType || 'Unknown',
+    uniqueFactors: {
+      userWallet: userWallet ? userWallet.slice(0, 8) + '...' : 'N/A',
+      scanTimestamp: timestamp,
+      hashSignature: hashAbs.toString(16).slice(0, 8)
     }
-  });
-  return Math.min(score, 100);
+  };
 }
 
 function estimateQuantumThreatTimeline(riskLevel) {
@@ -225,12 +302,13 @@ function generateRecommendations(vulnerabilities, assetType, riskLevel) {
     recommendations.push('🚨 URGENT: Implement quantum-resistant cryptography immediately');
     recommendations.push('🔄 Migrate to post-quantum signature schemes (CRYSTALS-Dilithium, FALCON)');
     recommendations.push('🛡️ Deploy quantum-safe key exchange protocols');
+    recommendations.push('⏰ Complete migration within 12-18 months');
   }
   
   if (hasMediumRisk) {
     recommendations.push('⏰ Plan for quantum-safe migration within 2-3 years');
     recommendations.push('📊 Monitor quantum computing developments closely');
-    recommendations.push('🔍 Conduct regular quantum vulnerability assessments');
+    recommendations.push('🔍 Conduct quarterly quantum vulnerability assessments');
   }
   
   // Asset-specific recommendations
@@ -238,22 +316,27 @@ function generateRecommendations(vulnerabilities, assetType, riskLevel) {
     case 'contract':
       recommendations.push('🔧 Implement upgradeable contract patterns for future quantum resistance');
       recommendations.push('🔐 Use quantum-resistant hash functions (SHA-3, BLAKE3)');
+      recommendations.push('📋 Audit all cryptographic dependencies');
       break;
     case 'wallet':
       recommendations.push('💾 Use hardware wallets with quantum-resistant features');
       recommendations.push('🔑 Implement hierarchical deterministic wallets with quantum-safe derivation');
+      recommendations.push('🔒 Enable multi-signature with post-quantum schemes');
       break;
     case 'nft':
       recommendations.push('🌐 Consider decentralized metadata storage solutions (IPFS)');
       recommendations.push('✅ Implement quantum-resistant authenticity verification');
+      recommendations.push('🔗 Upgrade cross-chain bridge protocols');
       break;
     case 'app':
       recommendations.push('🔒 Implement end-to-end encryption with quantum-safe algorithms');
       recommendations.push('🌐 Use quantum-resistant TLS/SSL protocols');
+      recommendations.push('🔐 Upgrade API authentication to post-quantum standards');
       break;
     case 'memecoin':
       recommendations.push('⚖️ Evaluate consensus mechanism for quantum resistance');
       recommendations.push('🔄 Consider hybrid classical-quantum resistant protocols');
+      recommendations.push('🏗️ Plan network upgrade for post-quantum cryptography');
       break;
   }
   
@@ -261,9 +344,13 @@ function generateRecommendations(vulnerabilities, assetType, riskLevel) {
   if (riskLevel === 'High') {
     recommendations.push('🚀 Consider quantum-safe blockchain migration');
     recommendations.push('💼 Obtain quantum-safe cyber insurance');
+    recommendations.push('👥 Engage quantum security specialists');
+  } else if (riskLevel === 'Medium') {
+    recommendations.push('📈 Develop quantum readiness roadmap');
+    recommendations.push('🎓 Train development team on post-quantum cryptography');
   }
   
-  return recommendations.slice(0, 6); // Limit to 6 recommendations
+  return recommendations.slice(0, 8); // Limit to 8 recommendations
 }
 
 export function getAssetTypeInfo(assetType) {

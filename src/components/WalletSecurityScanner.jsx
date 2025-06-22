@@ -368,7 +368,7 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 				}
 				
 				try {
-					const signer = provider.getSigner();
+					const signer = await provider.getSigner();
 					const networkInfo = await provider.getNetwork();
 					
 					// Check if on correct network
@@ -623,16 +623,12 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 							<span className="success-value">12 Months</span>
 						</div>
 						<div className="success-item">
-							<span className="success-label">Coverage Type:</span>
-							<span className="success-value">Quantum Threat Protection</span>
+							<span className="success-label">Network:</span>
+							<span className="success-value">{network.icon} {network.name}</span>
 						</div>
 						<div className="success-item">
 							<span className="success-label">Transaction Hash:</span>
 							<span className="success-value success-hash">{transactionHash}</span>
-						</div>
-						<div className="success-item">
-							<span className="success-label">Network:</span>
-							<span className="success-value">{network.icon} {network.name}</span>
 						</div>
 					</div>
 					
@@ -685,10 +681,6 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					<div className="insurance-item">
 						<span className="insurance-label">Protection Period:</span>
 						<span className="insurance-value">12 Months</span>
-					</div>
-					<div className="insurance-item">
-						<span className="insurance-label">Coverage Type:</span>
-						<span className="insurance-value">Quantum Threat Protection</span>
 					</div>
 					<div className="insurance-item">
 						<span className="insurance-label">Network:</span>
