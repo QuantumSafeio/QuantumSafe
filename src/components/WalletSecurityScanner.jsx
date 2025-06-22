@@ -595,7 +595,10 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 										setPaying(false);
 										return;
 									}
-									throw addNetworkError;
+									console.error('Failed to add network:', addNetworkError);
+									alert(`Failed to add ${network.name} network. Please add it manually in your wallet.`);
+									setPaying(false);
+									return;
 								}
 							} else {
 								alert(`Please switch to ${network.name} network in MetaMask before proceeding.`);
