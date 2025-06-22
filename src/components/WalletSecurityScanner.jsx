@@ -465,6 +465,22 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 		setLoading(false);
 	};
 
+	// Helper function to check if error is user rejection
+	const isUserRejectionError = (error) => {
+		return (
+			error.code === 4001 || 
+			error.code === 'ACTION_REJECTED' || 
+			error.reason === 'rejected' ||
+			(error.message && (
+				error.message.includes('User rejected') ||
+				error.message.includes('user rejected') ||
+				error.message.includes('User denied') ||
+				error.message.includes('user denied') ||
+				error.message.includes('ethers-user-denied')
+			))
+		);
+	};
+
 	// Enhanced payment handler with proper wallet integration and improved error handling
 	const handleSecure = async (e) => {
 		e.preventDefault();
@@ -534,35 +550,53 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 							txHash = tx.hash;
 							
 						} catch (switchError) {
+							// Check if this is a user rejection first
+							if (isUserRejectionError(switchError)) {
+								console.log('User rejected network switch - this is normal behavior');
+								alert('❌ Network switch cancelled\n\nYou declined the network switch request. To complete your transaction, please manually switch to the correct network in your wallet and try again.');
+								setPaying(false);
+								return;
+							}
+							
 							if (switchError.code === 4902) {
 								// Network not added, try to add it
-								await window.ethereum.request({
-									method: 'wallet_addEthereumChain',
-									params: [{
-										chainId: `0x${network.chainId.toString(16)}`,
-										chainName: network.name,
-										nativeCurrency: {
-											name: network.symbol,
-											symbol: network.symbol,
-											decimals: 18
-										},
-										rpcUrls: [network.rpcUrl],
-										blockExplorerUrls: [`https://${network.name.toLowerCase()}.etherscan.io`]
-									}]
-								});
-								
-								// Retry transaction after adding network
-								await new Promise(resolve => setTimeout(resolve, 1000));
-								const newProvider = new ethers.BrowserProvider(window.ethereum);
-								const newSigner = await newProvider.getSigner();
-								
-								const tx = await newSigner.sendTransaction({
-									to: network.address,
-									value: ethers.parseEther(cryptoAmount),
-									gasLimit: 21000
-								});
-								
-								txHash = tx.hash;
+								try {
+									await window.ethereum.request({
+										method: 'wallet_addEthereumChain',
+										params: [{
+											chainId: `0x${network.chainId.toString(16)}`,
+											chainName: network.name,
+											nativeCurrency: {
+												name: network.symbol,
+												symbol: network.symbol,
+												decimals: 18
+											},
+											rpcUrls: [network.rpcUrl],
+											blockExplorerUrls: [`https://${network.name.toLowerCase()}.etherscan.io`]
+										}]
+									});
+									
+									// Retry transaction after adding network
+									await new Promise(resolve => setTimeout(resolve, 1000));
+									const newProvider = new ethers.BrowserProvider(window.ethereum);
+									const newSigner = await newProvider.getSigner();
+									
+									const tx = await newSigner.sendTransaction({
+										to: network.address,
+										value: ethers.parseEther(cryptoAmount),
+										gasLimit: 21000
+									});
+									
+									txHash = tx.hash;
+								} catch (addNetworkError) {
+									if (isUserRejectionError(addNetworkError)) {
+										console.log('User rejected adding network - this is normal behavior');
+										alert('❌ Network addition cancelled\n\nYou declined adding the network. Please manually add the network to your wallet or switch to the correct network and try again.');
+										setPaying(false);
+										return;
+									}
+									throw addNetworkError;
+								}
 							} else {
 								alert(`Please switch to ${network.name} network in MetaMask before proceeding.`);
 								setPaying(false);
@@ -586,9 +620,12 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					console.error('EVM transaction error:', ethError);
 					
 					// Improved error handling for user-friendly messages
-					if (ethError.code === 4001 || ethError.code === 'ACTION_REJECTED' || ethError.reason === 'rejected') {
-						// User rejected the transaction - this is normal behavior
+					if (isUserRejectionError(ethError)) {
+						// User rejected the transaction - this is normal behavior, don't throw error
+						console.log('User rejected transaction - this is normal behavior');
 						alert('❌ Transaction cancelled\n\nYou declined the transaction in your wallet. No payment was processed.\n\nTo complete your quantum security insurance, please try again and approve the transaction when prompted.');
+						setPaying(false);
+						return;
 					} else if (ethError.code === -32603) {
 						alert('❌ Transaction failed\n\nInsufficient funds or network error. Please check your wallet balance and try again.');
 					} else if (ethError.message && ethError.message.includes('insufficient funds')) {
@@ -639,8 +676,11 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					console.error('Solana transaction error:', solError);
 					
 					// Improved error handling for Solana
-					if (solError.code === 4001 || solError.message?.includes('User rejected')) {
+					if (isUserRejectionError(solError)) {
+						console.log('User rejected Solana transaction - this is normal behavior');
 						alert('❌ Transaction cancelled\n\nYou declined the transaction in Phantom wallet. No payment was processed.\n\nTo complete your quantum security insurance, please try again and approve the transaction when prompted.');
+						setPaying(false);
+						return;
 					} else {
 						alert(`❌ Solana transaction failed\n\n${solError.message || 'An unexpected error occurred. Please try again.'}`);
 					}
@@ -674,7 +714,8 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 			console.error('Payment Error:', err);
 			
 			// General error handling with user-friendly messages
-			if (err.code === 4001 || err.reason === 'rejected') {
+			if (isUserRejectionError(err)) {
+				console.log('User rejected transaction - this is normal behavior');
 				alert('❌ Transaction cancelled\n\nYou declined the transaction in your wallet. No payment was processed.');
 			} else {
 				alert(`❌ Payment failed\n\n${err.message || 'An unexpected error occurred. Please try again.'}`);
