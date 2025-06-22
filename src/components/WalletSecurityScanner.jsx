@@ -73,15 +73,18 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 	const [transactionHash, setTransactionHash] = useState("");
 	const [realTimePrice, setRealTimePrice] = useState(null);
 	const [priceLoading, setPriceLoading] = useState(false);
-	const [walletConnected, setWalletConnected] = useState(false);
 	const [currentProvider, setCurrentProvider] = useState(provider);
+
+	// Enhanced wallet connection state
+	const [isWalletConnected, setIsWalletConnected] = useState(false);
+	const [walletConnectionError, setWalletConnectionError] = useState("");
 
 	const network = NETWORKS.find((n) => n.symbol === selectedNetwork);
 
-	// Auto-detect connected wallet network
+	// Check wallet connection status
 	useEffect(() => {
-		detectConnectedNetwork();
-	}, []);
+		checkWalletConnection();
+	}, [walletAddress, provider, selectedNetwork]);
 
 	// Update wallet address when network changes
 	useEffect(() => {
@@ -95,6 +98,7 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 		setPaymentSuccess(false);
 		setTransactionHash("");
 		setCryptoAmount(null);
+		setWalletConnectionError("");
 		
 		// Fetch new price for selected network
 		if (network) {
@@ -102,38 +106,73 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 		}
 	}, [selectedNetwork, walletAddress, networkKey]);
 
-	// Detect current connected network
-	const detectConnectedNetwork = async () => {
+	// Enhanced wallet connection check
+	const checkWalletConnection = async () => {
 		try {
-			if (window.ethereum && provider) {
-				const network = await provider.getNetwork();
-				const chainId = Number(network.chainId);
-				
-				let detectedSymbol = 'ETH';
-				switch (chainId) {
-					case 1:
-						detectedSymbol = 'ETH';
-						break;
-					case 137:
-						detectedSymbol = 'MATIC';
-						break;
-					case 56:
-						detectedSymbol = 'BNB';
-						break;
-					default:
-						detectedSymbol = 'ETH';
+			setWalletConnectionError("");
+			
+			// Check if wallet address exists
+			if (!walletAddress || !currentWalletAddress) {
+				setIsWalletConnected(false);
+				setWalletConnectionError("No wallet address provided");
+				return;
+			}
+
+			// Check network-specific connection
+			if (network?.isEVM) {
+				// For EVM networks, check MetaMask connection
+				if (!window.ethereum) {
+					setIsWalletConnected(false);
+					setWalletConnectionError("MetaMask not installed");
+					return;
 				}
-				
-				if (detectedSymbol !== selectedNetwork) {
-					setSelectedNetwork(detectedSymbol);
+
+				try {
+					const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+					if (accounts.length === 0) {
+						setIsWalletConnected(false);
+						setWalletConnectionError("MetaMask not connected");
+						return;
+					}
+
+					// Check if current provider is available
+					if (provider || currentProvider) {
+						setIsWalletConnected(true);
+						setCurrentProvider(provider || currentProvider);
+					} else {
+						// Try to create new provider
+						const newProvider = new ethers.BrowserProvider(window.ethereum);
+						setCurrentProvider(newProvider);
+						setIsWalletConnected(true);
+					}
+				} catch (error) {
+					setIsWalletConnected(false);
+					setWalletConnectionError("Failed to check MetaMask connection");
 				}
-				setWalletConnected(true);
-			} else if (window.solana && window.solana.isConnected) {
-				setSelectedNetwork('SOL');
-				setWalletConnected(true);
+			} else if (network?.isPhantom) {
+				// For Solana, check Phantom connection
+				if (!window.solana || !window.solana.isPhantom) {
+					setIsWalletConnected(false);
+					setWalletConnectionError("Phantom wallet not installed");
+					return;
+				}
+
+				if (window.solana.isConnected) {
+					setIsWalletConnected(true);
+				} else {
+					setIsWalletConnected(false);
+					setWalletConnectionError("Phantom wallet not connected");
+				}
+			} else if (network?.isManual) {
+				// For manual networks (BTC, SUI), just check if address exists
+				setIsWalletConnected(!!currentWalletAddress);
+			} else {
+				setIsWalletConnected(!!currentWalletAddress);
 			}
 		} catch (error) {
-			console.error('Error detecting network:', error);
+			console.error('Error checking wallet connection:', error);
+			setIsWalletConnected(false);
+			setWalletConnectionError("Connection check failed");
 		}
 	};
 
@@ -225,6 +264,7 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 		setCryptoAmount(null);
 		setPaymentSuccess(false);
 		setTransactionHash("");
+		setWalletConnectionError("");
 	};
 
 	// Enhanced scan result generation
@@ -438,6 +478,12 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 			alert('Price information not available. Please wait and try again.');
 			return;
 		}
+
+		// Check wallet connection before payment
+		if (!isWalletConnected) {
+			alert(`Wallet not connected. ${walletConnectionError || 'Please connect your wallet first.'}`);
+			return;
+		}
 		
 		setPaying(true);
 		
@@ -452,18 +498,15 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					return;
 				}
 				
-				if (!provider && !currentProvider) {
+				if (!currentProvider) {
 					alert('Wallet provider not connected. Please reconnect your wallet.');
 					setPaying(false);
 					return;
 				}
 				
 				try {
-					const activeProvider = currentProvider || provider || new ethers.BrowserProvider(window.ethereum);
-					setCurrentProvider(activeProvider);
-					
-					const signer = await activeProvider.getSigner();
-					const networkInfo = await activeProvider.getNetwork();
+					const signer = await currentProvider.getSigner();
+					const networkInfo = await currentProvider.getNetwork();
 					
 					// Check if on correct network
 					if (Number(networkInfo.chainId) !== network.chainId) {
@@ -839,10 +882,37 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					</div>
 				</div>
 				
+				{/* Enhanced wallet connection status */}
+				{!isWalletConnected && (
+					<div className="wallet-warning">
+						<div className="warning-icon">⚠️</div>
+						<div className="warning-content">
+							<span className="warning-title">Wallet Connection Required</span>
+							<p className="warning-desc">
+								{walletConnectionError || 'Please connect your wallet to proceed with payment'}
+							</p>
+							{network.isEVM && !window.ethereum && (
+								<p className="warning-note">
+									<a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer">
+										Install MetaMask
+									</a> to continue
+								</p>
+							)}
+							{network.isPhantom && !window.solana && (
+								<p className="warning-note">
+									<a href="https://phantom.app/" target="_blank" rel="noopener noreferrer">
+										Install Phantom Wallet
+									</a> to continue
+								</p>
+							)}
+						</div>
+					</div>
+				)}
+				
 				<button
 					className="secure-btn"
 					onClick={handleSecure}
-					disabled={!cryptoAmount || loading || paying || priceLoading || !realTimePrice}
+					disabled={!cryptoAmount || loading || paying || priceLoading || !realTimePrice || !isWalletConnected}
 				>
 					{paying ? (
 						<>
@@ -856,6 +926,8 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 						</>
 					) : !realTimePrice ? (
 						'Price Unavailable'
+					) : !isWalletConnected ? (
+						`Connect ${network.isEVM ? 'MetaMask' : network.isPhantom ? 'Phantom' : 'Wallet'} First`
 					) : (
 						<>
 							🚀 Secure with {network.symbol}
@@ -864,23 +936,13 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					)}
 				</button>
 				
-				{network.isManual && (
+				{network.isManual && isWalletConnected && (
 					<div className="manual-payment-info">
 						<div className="info-icon">ℹ️</div>
 						<div className="manual-content">
 							<span className="manual-title">Manual Payment Required</span>
 							<p className="manual-desc">Send {cryptoAmount} {network.symbol} to: {network.address}</p>
 							<p className="manual-note">Payment will be verified automatically within 10-30 minutes</p>
-						</div>
-					</div>
-				)}
-				
-				{network.isEVM && !walletConnected && (
-					<div className="wallet-warning">
-						<div className="warning-icon">⚠️</div>
-						<div className="warning-content">
-							<span className="warning-title">Wallet Not Connected</span>
-							<p className="warning-desc">Please connect your MetaMask wallet to proceed with payment</p>
 						</div>
 					</div>
 				)}
@@ -896,12 +958,13 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					<h2>Quantum Security Scanner</h2>
 					<p>Advanced AI-powered analysis for digital asset protection</p>
 				</div>
-				{walletConnected && (
-					<div className="connection-status">
-						<div className="status-indicator connected"></div>
-						<span>Wallet Connected</span>
-					</div>
-				)}
+				{/* Enhanced connection status display */}
+				<div className="connection-status">
+					<div className={`status-indicator ${isWalletConnected ? 'connected' : 'disconnected'}`}></div>
+					<span className={isWalletConnected ? 'status-connected' : 'status-disconnected'}>
+						{isWalletConnected ? 'Wallet Connected' : 'Wallet Disconnected'}
+					</span>
+				</div>
 			</div>
 			
 			<div className="scanner-inputs">
@@ -927,6 +990,12 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 						<input value={currentWalletAddress} disabled />
 						<span className="network-badge">{network.icon} {network.symbol}</span>
 					</div>
+					{/* Connection status for this specific network */}
+					{walletConnectionError && (
+						<div className="connection-error">
+							⚠️ {walletConnectionError}
+						</div>
+					)}
 				</div>
 				
 				<div className="input-group">
@@ -1018,12 +1087,10 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					align-items: center;
 					gap: 8px;
 					padding: 8px 16px;
-					background: rgba(16, 185, 129, 0.1);
-					border: 1px solid rgba(16, 185, 129, 0.3);
 					border-radius: 20px;
-					color: #10b981;
 					font-size: 14px;
 					font-weight: 600;
+					border: 1px solid;
 				}
 				
 				.status-indicator {
@@ -1035,6 +1102,28 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 				.status-indicator.connected {
 					background: #10b981;
 					animation: pulse 2s infinite;
+				}
+				
+				.status-indicator.disconnected {
+					background: #ef4444;
+				}
+				
+				.status-connected {
+					color: #10b981;
+				}
+				
+				.status-disconnected {
+					color: #ef4444;
+				}
+				
+				.connection-status:has(.status-connected) {
+					background: rgba(16, 185, 129, 0.1);
+					border-color: rgba(16, 185, 129, 0.3);
+				}
+				
+				.connection-status:has(.status-disconnected) {
+					background: rgba(239, 68, 68, 0.1);
+					border-color: rgba(239, 68, 68, 0.3);
 				}
 				
 				.scanner-inputs {
@@ -1098,6 +1187,15 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 					font-size: 12px;
 					font-weight: 600;
 					border: 1px solid rgba(59, 130, 246, 0.3);
+				}
+				
+				.connection-error {
+					color: #ef4444;
+					font-size: 14px;
+					margin-top: 4px;
+					display: flex;
+					align-items: center;
+					gap: 8px;
 				}
 				
 				.input-error {
@@ -1535,8 +1633,19 @@ export default function WalletSecurityScanner({ walletAddress = '', networkKey =
 				
 				.warning-desc {
 					font-size: 14px;
-					margin: 0;
+					margin: 0 0 8px 0;
 					color: rgba(255, 255, 255, 0.9);
+				}
+				
+				.warning-note {
+					font-size: 12px;
+					margin: 0;
+					opacity: 0.8;
+				}
+				
+				.warning-note a {
+					color: #60a5fa;
+					text-decoration: underline;
 				}
 				
 				.insurance-success {
