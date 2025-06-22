@@ -242,9 +242,11 @@ export default function Dashboard(props) {
   }, []);
 
   const generateReferralLink = () => {
-    const baseUrl = window.location.origin + window.location.pathname;
-    const link = `${baseUrl}?ref=${user?.id}`;
-    setReferralLink(link);
+    if (user?.id) {
+      const baseUrl = 'https://quantumsafeio.github.io/QuantumSafe/';
+      const link = `${baseUrl}?ref=${user.id}`;
+      setReferralLink(link);
+    }
   };
 
   const copyReferralLink = () => {
@@ -366,25 +368,20 @@ export default function Dashboard(props) {
 
       if (scanError) throw scanError;
 
-      await supabase
-        .from('user_points')
-        .update({ points: userPoints - 10 })
-        .eq('user_id', user.id);
-
-      await supabase
-        .from('points_transactions')
-        .insert({
-          user_id: user.id,
-          points_change: -10,
-          source: 'scan',
-          metadata: {
-            asset_type: selectedAssetType,
-            asset_address: assetInput.trim(),
-            scan_id: scanData.id,
-            network_type: currentNetworkType,
-            wallet_address: web3Address || connectedWalletAddress
-          }
-        });
+      // Award points using the new system
+      await supabase.rpc('award_points', {
+        user_uuid: user.id,
+        points_amount: -10,
+        point_source: 'scan',
+        point_platform: 'app',
+        point_metadata: {
+          asset_type: selectedAssetType,
+          asset_address: assetInput.trim(),
+          scan_id: scanData.id,
+          network_type: currentNetworkType,
+          wallet_address: web3Address || connectedWalletAddress
+        }
+      });
 
       setUserPoints(prev => prev - 10);
       setCurrentScanResult(result);
@@ -440,7 +437,7 @@ export default function Dashboard(props) {
     { id: 'analytics', label: 'Security Analytics', icon: '📊' },
     { id: 'history', label: 'Scan History', icon: '📋' },
     { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' },
-    { id: 'marketing', label: 'Marketing & Promotion', icon: '🚀' }
+    { id: 'marketing', label: 'Points & Rewards', icon: '💎' }
   ];
 
   if (loading) {
@@ -684,62 +681,6 @@ export default function Dashboard(props) {
       </div>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-        {/* Referral Section */}
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px',
-          border: '1px solid #e5e7eb',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#111827',
-            marginBottom: '16px'
-          }}>
-            🔗 Referral Link
-          </h3>
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'center'
-          }}>
-            <input
-              type="text"
-              value={referralLink}
-              readOnly
-              style={{
-                width: '320px',
-                padding: '12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                background: '#f9fafb',
-                color: '#6b7280'
-              }}
-            />
-            <button
-              onClick={copyReferralLink}
-              style={{
-                width: '100px',
-                padding: '12px',
-                background: copied ? '#16a34a' : '#4f46e5',
-                border: 'none',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
-        </div>
-
         {/* Navigation Tabs */}
         <div style={{
           display: 'flex',
@@ -948,7 +889,7 @@ export default function Dashboard(props) {
                 color: '#92400e',
                 fontSize: '14px'
               }}>
-                💡 <strong>Need more points?</strong> Share your results on Twitter or invite friends to earn points!
+                💡 <strong>Need more points?</strong> Share your results on social media or invite friends to earn points!
               </div>
             )}
           </div>
@@ -1064,37 +1005,6 @@ export default function Dashboard(props) {
             user={user}
           />
         )}
-
-        {/* Points System Info */}
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          marginTop: '24px',
-          border: '1px solid #e5e7eb',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#111827',
-            marginBottom: '16px'
-          }}>
-            🎁 Points & Rewards System
-          </h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px',
-            fontSize: '14px',
-            color: '#6b7280'
-          }}>
-            <div>• 3 likes or retweets = 1 point</div>
-            <div>• Each comment = 1 point</div>
-            <div>• User referral = bonus points</div>
-            <div>• Each scan = 10 points</div>
-          </div>
-        </div>
 
         {/* Multi-Chain Payment Modal */}
         <MultiChainPaymentModal
