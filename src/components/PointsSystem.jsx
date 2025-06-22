@@ -22,23 +22,23 @@ export default function PointsSystem() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Points calculation rates
+  // Enhanced Points calculation rates based on requirements
   const POINTS_RATES = {
     twitter: {
-      post: 3,
-      engagement: 0.05 // per like/retweet/comment
+      post: 3, // 3 points per tweet
+      engagement: 0.05 // 0.05 points per like/retweet/comment
     },
     telegram: {
-      post: 5,
-      engagement: 0.01 // per interaction
+      post: 5, // 5 points per post
+      engagement: 0.01 // 0.01 points per interaction
     },
     youtube: {
-      video: 17,
-      engagement: 0.3 // per view/like/comment
+      video: 17, // 17 points per video
+      engagement: 0.3 // 0.3 points per engagement
     },
     linkedin: {
-      article: 22,
-      engagement: 0.7 // per like/comment/share
+      article: 22, // 22 points per article
+      engagement: 0.7 // 0.7 points per engagement
     },
     referral: {
       percentage: 7 // 7% of referred user's points
@@ -67,7 +67,7 @@ export default function PointsSystem() {
       // Fetch user points
       const { data: pointsData } = await supabase
         .from('user_points')
-        .select('points')
+        .select('points, social_media_points, referral_points, scan_points')
         .eq('user_id', user.id)
         .single();
 
@@ -90,7 +90,7 @@ export default function PointsSystem() {
         .eq('referrer_id', user.id);
 
       const totalReferrals = referralData?.length || 0;
-      const totalEarned = referralData?.reduce((sum, ref) => sum + (ref.points_awarded || 0), 0) || 0;
+      const totalEarned = referralData?.reduce((sum, ref) => sum + (ref.total_earned || 0), 0) || 0;
 
       setReferralStats({
         totalReferrals,
@@ -98,13 +98,30 @@ export default function PointsSystem() {
         pendingRewards: 0
       });
 
-      // Simulate social stats (in real app, fetch from social APIs)
-      setSocialStats({
-        twitter: { posts: 12, engagement: 340, points: 53 },
-        telegram: { posts: 8, engagement: 156, points: 41.56 },
-        youtube: { videos: 3, engagement: 89, points: 77.7 },
-        linkedin: { articles: 2, engagement: 45, points: 75.5 }
+      // Fetch social media stats
+      const { data: socialData } = await supabase
+        .from('social_media_stats')
+        .select('*')
+        .eq('user_id', user.id);
+
+      const socialStatsMap = {
+        twitter: { posts: 0, engagement: 0, points: 0 },
+        telegram: { posts: 0, engagement: 0, points: 0 },
+        youtube: { videos: 0, engagement: 0, points: 0 },
+        linkedin: { articles: 0, engagement: 0, points: 0 }
+      };
+
+      socialData?.forEach(stat => {
+        if (socialStatsMap[stat.platform]) {
+          socialStatsMap[stat.platform] = {
+            posts: stat.posts_count || 0,
+            engagement: stat.engagement_count || 0,
+            points: stat.total_points || 0
+          };
+        }
       });
+
+      setSocialStats(socialStatsMap);
 
     } catch (error) {
       console.error('Error fetching points data:', error);
@@ -129,7 +146,7 @@ export default function PointsSystem() {
     const text = `🚀 Join me on QuantumSafe - The future of blockchain security!
 
 🛡️ Advanced quantum threat protection
-🔍 AI-powered security scanning
+🔍 AI-powered security scanning  
 💰 Earn points for engagement
 🎁 Get bonus points with my referral link
 
@@ -153,6 +170,31 @@ Join now: ${referralLink}
     return Object.values(socialStats).reduce((total, platform) => total + platform.points, 0);
   };
 
+  const simulateEngagement = async (platform) => {
+    try {
+      // Simulate adding engagement for demo purposes
+      const engagementBonus = Math.floor(Math.random() * 10) + 1;
+      const pointsEarned = engagementBonus * POINTS_RATES[platform].engagement;
+      
+      await supabase.rpc('award_points', {
+        user_uuid: user.id,
+        points_amount: pointsEarned,
+        point_source: 'social',
+        point_platform: platform,
+        point_metadata: {
+          engagement_count: engagementBonus,
+          simulated: true
+        }
+      });
+
+      toast.success(`+${pointsEarned.toFixed(2)} points from ${platform} engagement!`);
+      fetchPointsData();
+    } catch (error) {
+      console.error('Error simulating engagement:', error);
+      toast.error('Failed to update engagement');
+    }
+  };
+
   if (loading) {
     return (
       <div className="points-loading">
@@ -164,7 +206,7 @@ Join now: ${referralLink}
 
   return (
     <div className="points-system-container">
-      {/* Points Overview Header */}
+      {/* Enhanced Points Overview Header */}
       <div className="points-header">
         <div className="points-overview">
           <div className="total-points">
@@ -181,7 +223,7 @@ Join now: ${referralLink}
             </div>
             <div className="breakdown-item">
               <span className="breakdown-label">Referrals</span>
-              <span className="breakdown-value">{referralStats.totalEarned}</span>
+              <span className="breakdown-value">{referralStats.totalEarned.toFixed(1)}</span>
             </div>
             <div className="breakdown-item">
               <span className="breakdown-label">Scans</span>
@@ -191,123 +233,111 @@ Join now: ${referralLink}
         </div>
       </div>
 
-      {/* Social Media Points Section */}
+      {/* Enhanced Social Media Points Section */}
       <div className="social-points-section">
-        <h3>📱 Social Media Engagement Points</h3>
-        <div className="social-platforms">
-          <div className="platform-card twitter">
-            <div className="platform-header">
-              <div className="platform-icon">🐦</div>
-              <div className="platform-info">
-                <h4>Twitter</h4>
-                <p>@QuantumSafeIo</p>
-              </div>
-              <div className="platform-points">{socialStats.twitter.points}</div>
+        <h3>📱 Enhanced Social Media Engagement System</h3>
+        <div className="rates-overview">
+          <div className="rate-card twitter">
+            <div className="rate-header">
+              <span className="rate-icon">🐦</span>
+              <span className="rate-title">Twitter</span>
             </div>
-            <div className="platform-stats">
-              <div className="stat-item">
-                <span className="stat-label">Posts</span>
-                <span className="stat-value">{socialStats.twitter.posts}</span>
-                <span className="stat-points">+{socialStats.twitter.posts * POINTS_RATES.twitter.post} pts</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Engagement</span>
-                <span className="stat-value">{socialStats.twitter.engagement}</span>
-                <span className="stat-points">+{(socialStats.twitter.engagement * POINTS_RATES.twitter.engagement).toFixed(1)} pts</span>
-              </div>
-            </div>
-            <div className="platform-rates">
+            <div className="rate-details">
               <div className="rate-item">📝 {POINTS_RATES.twitter.post} points per tweet</div>
               <div className="rate-item">❤️ {POINTS_RATES.twitter.engagement} points per engagement</div>
             </div>
           </div>
-
-          <div className="platform-card telegram">
-            <div className="platform-header">
-              <div className="platform-icon">📱</div>
-              <div className="platform-info">
-                <h4>Telegram</h4>
-                <p>Community Posts</p>
-              </div>
-              <div className="platform-points">{socialStats.telegram.points}</div>
+          
+          <div className="rate-card telegram">
+            <div className="rate-header">
+              <span className="rate-icon">📱</span>
+              <span className="rate-title">Telegram</span>
             </div>
-            <div className="platform-stats">
-              <div className="stat-item">
-                <span className="stat-label">Posts</span>
-                <span className="stat-value">{socialStats.telegram.posts}</span>
-                <span className="stat-points">+{socialStats.telegram.posts * POINTS_RATES.telegram.post} pts</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Interactions</span>
-                <span className="stat-value">{socialStats.telegram.engagement}</span>
-                <span className="stat-points">+{(socialStats.telegram.engagement * POINTS_RATES.telegram.engagement).toFixed(2)} pts</span>
-              </div>
-            </div>
-            <div className="platform-rates">
+            <div className="rate-details">
               <div className="rate-item">📝 {POINTS_RATES.telegram.post} points per post</div>
               <div className="rate-item">👥 {POINTS_RATES.telegram.engagement} points per interaction</div>
             </div>
           </div>
-
-          <div className="platform-card youtube">
-            <div className="platform-header">
-              <div className="platform-icon">📺</div>
-              <div className="platform-info">
-                <h4>YouTube</h4>
-                <p>Educational Videos</p>
-              </div>
-              <div className="platform-points">{socialStats.youtube.points}</div>
+          
+          <div className="rate-card youtube">
+            <div className="rate-header">
+              <span className="rate-icon">📺</span>
+              <span className="rate-title">YouTube</span>
             </div>
-            <div className="platform-stats">
-              <div className="stat-item">
-                <span className="stat-label">Videos</span>
-                <span className="stat-value">{socialStats.youtube.videos}</span>
-                <span className="stat-points">+{socialStats.youtube.videos * POINTS_RATES.youtube.video} pts</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Engagement</span>
-                <span className="stat-value">{socialStats.youtube.engagement}</span>
-                <span className="stat-points">+{(socialStats.youtube.engagement * POINTS_RATES.youtube.engagement).toFixed(1)} pts</span>
-              </div>
-            </div>
-            <div className="platform-rates">
+            <div className="rate-details">
               <div className="rate-item">🎥 {POINTS_RATES.youtube.video} points per video</div>
               <div className="rate-item">👍 {POINTS_RATES.youtube.engagement} points per engagement</div>
             </div>
           </div>
-
-          <div className="platform-card linkedin">
-            <div className="platform-header">
-              <div className="platform-icon">💼</div>
-              <div className="platform-info">
-                <h4>LinkedIn</h4>
-                <p>Professional Articles</p>
-              </div>
-              <div className="platform-points">{socialStats.linkedin.points}</div>
+          
+          <div className="rate-card linkedin">
+            <div className="rate-header">
+              <span className="rate-icon">💼</span>
+              <span className="rate-title">LinkedIn</span>
             </div>
-            <div className="platform-stats">
-              <div className="stat-item">
-                <span className="stat-label">Articles</span>
-                <span className="stat-value">{socialStats.linkedin.articles}</span>
-                <span className="stat-points">+{socialStats.linkedin.articles * POINTS_RATES.linkedin.article} pts</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Engagement</span>
-                <span className="stat-value">{socialStats.linkedin.engagement}</span>
-                <span className="stat-points">+{(socialStats.linkedin.engagement * POINTS_RATES.linkedin.engagement).toFixed(1)} pts</span>
-              </div>
-            </div>
-            <div className="platform-rates">
+            <div className="rate-details">
               <div className="rate-item">📄 {POINTS_RATES.linkedin.article} points per article</div>
               <div className="rate-item">💬 {POINTS_RATES.linkedin.engagement} points per engagement</div>
             </div>
           </div>
         </div>
+
+        <div className="social-platforms">
+          {Object.entries(socialStats).map(([platform, stats]) => (
+            <div key={platform} className={`platform-card ${platform}`}>
+              <div className="platform-header">
+                <div className="platform-icon">
+                  {platform === 'twitter' ? '🐦' : 
+                   platform === 'telegram' ? '📱' : 
+                   platform === 'youtube' ? '📺' : '💼'}
+                </div>
+                <div className="platform-info">
+                  <h4>{platform.charAt(0).toUpperCase() + platform.slice(1)}</h4>
+                  <p>
+                    {platform === 'twitter' ? '@QuantumSafeIo' :
+                     platform === 'telegram' ? 'Community Posts' :
+                     platform === 'youtube' ? 'Educational Videos' : 'Professional Articles'}
+                  </p>
+                </div>
+                <div className="platform-points">{stats.points.toFixed(1)}</div>
+              </div>
+              
+              <div className="platform-stats">
+                <div className="stat-item">
+                  <span className="stat-label">
+                    {platform === 'youtube' ? 'Videos' : 
+                     platform === 'linkedin' ? 'Articles' : 'Posts'}
+                  </span>
+                  <span className="stat-value">{stats.posts}</span>
+                  <span className="stat-points">
+                    +{(stats.posts * (platform === 'youtube' ? POINTS_RATES.youtube.video : 
+                                     platform === 'linkedin' ? POINTS_RATES.linkedin.article :
+                                     POINTS_RATES[platform].post)).toFixed(1)} pts
+                  </span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-label">Engagement</span>
+                  <span className="stat-value">{stats.engagement}</span>
+                  <span className="stat-points">
+                    +{(stats.engagement * POINTS_RATES[platform].engagement).toFixed(2)} pts
+                  </span>
+                </div>
+              </div>
+              
+              <button 
+                className="simulate-btn"
+                onClick={() => simulateEngagement(platform)}
+              >
+                Simulate Engagement
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Referral System Section */}
+      {/* Enhanced Referral System Section */}
       <div className="referral-section">
-        <h3>🔗 Referral Program</h3>
+        <h3>🔗 Enhanced Referral Program (7% Commission)</h3>
         <div className="referral-overview">
           <div className="referral-stats">
             <div className="referral-stat">
@@ -315,7 +345,7 @@ Join now: ${referralLink}
               <div className="stat-label">Total Referrals</div>
             </div>
             <div className="referral-stat">
-              <div className="stat-number">{referralStats.totalEarned}</div>
+              <div className="stat-number">{referralStats.totalEarned.toFixed(1)}</div>
               <div className="stat-label">Points Earned</div>
             </div>
             <div className="referral-stat">
@@ -359,13 +389,13 @@ Join now: ${referralLink}
         </div>
 
         <div className="referral-info">
-          <h4>💰 How Referrals Work</h4>
+          <h4>💰 How the Enhanced Referral System Works</h4>
           <div className="referral-benefits">
             <div className="benefit-item">
               <div className="benefit-icon">🎁</div>
               <div className="benefit-text">
                 <strong>Earn 7% Forever</strong>
-                <p>Get 7% of all points your referrals earn, for life!</p>
+                <p>Get 7% of all points your referrals earn from any activity, for life!</p>
               </div>
             </div>
             <div className="benefit-item">
@@ -379,65 +409,8 @@ Join now: ${referralLink}
               <div className="benefit-icon">📈</div>
               <div className="benefit-text">
                 <strong>Unlimited Potential</strong>
-                <p>No limit on referrals or earnings - the sky's the limit!</p>
+                <p>No limit on referrals or earnings - build your quantum security empire!</p>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Ambassador Program Section */}
-      <div className="ambassador-section">
-        <h3>👑 Ambassador Program</h3>
-        <div className="ambassador-tiers">
-          <div className="tier-card bronze">
-            <div className="tier-header">
-              <div className="tier-icon">🥉</div>
-              <h4>Bronze Ambassador</h4>
-            </div>
-            <div className="tier-requirements">
-              <div className="requirement">• 10+ Referrals</div>
-              <div className="requirement">• 500+ Points</div>
-              <div className="requirement">• 5+ Social Posts</div>
-            </div>
-            <div className="tier-benefits">
-              <div className="benefit">🎁 10% Bonus on all points</div>
-              <div className="benefit">📱 Exclusive Discord access</div>
-              <div className="benefit">🏆 Bronze badge on profile</div>
-            </div>
-          </div>
-
-          <div className="tier-card silver">
-            <div className="tier-header">
-              <div className="tier-icon">🥈</div>
-              <h4>Silver Ambassador</h4>
-            </div>
-            <div className="tier-requirements">
-              <div className="requirement">• 25+ Referrals</div>
-              <div className="requirement">• 1,500+ Points</div>
-              <div className="requirement">• 15+ Social Posts</div>
-            </div>
-            <div className="tier-benefits">
-              <div className="benefit">🎁 15% Bonus on all points</div>
-              <div className="benefit">💰 Monthly crypto rewards</div>
-              <div className="benefit">🎯 Early feature access</div>
-            </div>
-          </div>
-
-          <div className="tier-card gold">
-            <div className="tier-header">
-              <div className="tier-icon">🥇</div>
-              <h4>Gold Ambassador</h4>
-            </div>
-            <div className="tier-requirements">
-              <div className="requirement">• 50+ Referrals</div>
-              <div className="requirement">• 5,000+ Points</div>
-              <div className="requirement">• 30+ Social Posts</div>
-            </div>
-            <div className="tier-benefits">
-              <div className="benefit">🎁 25% Bonus on all points</div>
-              <div className="benefit">💎 Premium NFT rewards</div>
-              <div className="benefit">🤝 Direct team contact</div>
             </div>
           </div>
         </div>
@@ -445,10 +418,10 @@ Join now: ${referralLink}
 
       {/* Points History */}
       <div className="points-history-section">
-        <h3>📊 Points History</h3>
+        <h3>📊 Recent Points Activity</h3>
         <div className="history-list">
           {pointsHistory.length > 0 ? (
-            pointsHistory.map((transaction, index) => (
+            pointsHistory.slice(0, 10).map((transaction, index) => (
               <div key={index} className="history-item">
                 <div className="history-icon">
                   {transaction.source === 'scan' ? '🔍' :
@@ -459,10 +432,10 @@ Join now: ${referralLink}
                   <div className="history-title">
                     {transaction.source === 'scan' ? 'Asset Scan' :
                      transaction.source === 'referral' ? 'Referral Bonus' :
-                     transaction.source === 'social' ? 'Social Media' : 'Points Earned'}
+                     transaction.source === 'social' ? `${transaction.platform || 'Social'} Media` : 'Points Activity'}
                   </div>
                   <div className="history-date">
-                    {new Date(transaction.created_at).toLocaleDateString()}
+                    {new Date(transaction.created_at).toLocaleDateString()} • {new Date(transaction.created_at).toLocaleTimeString()}
                   </div>
                 </div>
                 <div className={`history-points ${transaction.points_change > 0 ? 'positive' : 'negative'}`}>
@@ -484,7 +457,7 @@ Join now: ${referralLink}
         .points-system-container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 24px;
+          padding: 0;
           display: flex;
           flex-direction: column;
           gap: 32px;
@@ -497,22 +470,24 @@ Join now: ${referralLink}
           justify-content: center;
           padding: 60px;
           gap: 20px;
+          color: rgba(255, 255, 255, 0.7);
         }
 
         .loading-spinner {
           width: 40px;
           height: 40px;
-          border: 3px solid rgba(59, 130, 246, 0.3);
-          border-top: 3px solid #3b82f6;
+          border: 3px solid rgba(0, 245, 255, 0.3);
+          border-top: 3px solid #00f5ff;
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
 
         .points-header {
-          background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+          background: rgba(255, 255, 255, 0.05);
           border-radius: 20px;
           padding: 32px;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
         }
 
         .points-overview {
@@ -531,12 +506,13 @@ Join now: ${referralLink}
 
         .points-icon {
           font-size: 48px;
-          background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+          background: linear-gradient(45deg, #ffd700, #ffed4e);
           border-radius: 16px;
           padding: 16px;
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
         }
 
         .points-info h2 {
@@ -544,7 +520,7 @@ Join now: ${referralLink}
           font-size: 48px;
           font-weight: 700;
           margin: 0;
-          background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+          background: linear-gradient(45deg, #ffd700, #ffed4e);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -575,7 +551,7 @@ Join now: ${referralLink}
         }
 
         .breakdown-value {
-          color: #3b82f6;
+          color: #00f5ff;
           font-size: 24px;
           font-weight: 700;
         }
@@ -585,6 +561,7 @@ Join now: ${referralLink}
           border-radius: 20px;
           padding: 32px;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
         }
 
         .social-points-section h3 {
@@ -592,6 +569,70 @@ Join now: ${referralLink}
           font-size: 24px;
           font-weight: 700;
           margin: 0 0 24px 0;
+          text-align: center;
+        }
+
+        .rates-overview {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+
+        .rate-card {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 20px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          text-align: center;
+        }
+
+        .rate-card.twitter {
+          border-left: 4px solid #1da1f2;
+        }
+
+        .rate-card.telegram {
+          border-left: 4px solid #0088cc;
+        }
+
+        .rate-card.youtube {
+          border-left: 4px solid #ff0000;
+        }
+
+        .rate-card.linkedin {
+          border-left: 4px solid #0077b5;
+        }
+
+        .rate-header {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .rate-icon {
+          font-size: 24px;
+        }
+
+        .rate-title {
+          color: #ffffff;
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .rate-details {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .rate-item {
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 14px;
+          padding: 8px 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 6px;
         }
 
         .social-platforms {
@@ -664,7 +705,7 @@ Join now: ${referralLink}
         }
 
         .platform-points {
-          color: #3b82f6;
+          color: #ffd700;
           font-size: 24px;
           font-weight: 700;
         }
@@ -701,18 +742,22 @@ Join now: ${referralLink}
           font-weight: 600;
         }
 
-        .platform-rates {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+        .simulate-btn {
+          width: 100%;
+          padding: 12px;
+          background: linear-gradient(45deg, #00f5ff, #0099cc);
+          border: none;
+          border-radius: 8px;
+          color: white;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
         }
 
-        .rate-item {
-          color: rgba(255, 255, 255, 0.6);
-          font-size: 12px;
-          padding: 6px 12px;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 6px;
+        .simulate-btn:hover {
+          background: linear-gradient(45deg, #0099cc, #007acc);
+          transform: translateY(-1px);
         }
 
         .referral-section {
@@ -720,6 +765,7 @@ Join now: ${referralLink}
           border-radius: 20px;
           padding: 32px;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
         }
 
         .referral-section h3 {
@@ -727,6 +773,7 @@ Join now: ${referralLink}
           font-size: 24px;
           font-weight: 700;
           margin: 0 0 24px 0;
+          text-align: center;
         }
 
         .referral-overview {
@@ -751,7 +798,7 @@ Join now: ${referralLink}
         }
 
         .stat-number {
-          color: #3b82f6;
+          color: #ffd700;
           font-size: 32px;
           font-weight: 700;
           margin-bottom: 8px;
@@ -790,7 +837,7 @@ Join now: ${referralLink}
 
         .copy-button {
           padding: 12px 20px;
-          background: #3b82f6;
+          background: linear-gradient(45deg, #00f5ff, #0099cc);
           border: none;
           border-radius: 8px;
           color: white;
@@ -802,11 +849,11 @@ Join now: ${referralLink}
         }
 
         .copy-button:hover {
-          background: #2563eb;
+          background: linear-gradient(45deg, #0099cc, #007acc);
         }
 
         .copy-button.copied {
-          background: #10b981;
+          background: linear-gradient(45deg, #10b981, #059669);
         }
 
         .share-buttons {
@@ -888,105 +935,12 @@ Join now: ${referralLink}
           margin: 0;
         }
 
-        .ambassador-section {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 20px;
-          padding: 32px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .ambassador-section h3 {
-          color: #ffffff;
-          font-size: 24px;
-          font-weight: 700;
-          margin: 0 0 24px 0;
-        }
-
-        .ambassador-tiers {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 20px;
-        }
-
-        .tier-card {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 16px;
-          padding: 24px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          transition: all 0.3s ease;
-        }
-
-        .tier-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        .tier-card.bronze {
-          border-top: 4px solid #cd7f32;
-        }
-
-        .tier-card.silver {
-          border-top: 4px solid #c0c0c0;
-        }
-
-        .tier-card.gold {
-          border-top: 4px solid #ffd700;
-        }
-
-        .tier-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 20px;
-        }
-
-        .tier-icon {
-          font-size: 32px;
-        }
-
-        .tier-header h4 {
-          color: #ffffff;
-          font-size: 18px;
-          font-weight: 600;
-          margin: 0;
-        }
-
-        .tier-requirements {
-          margin-bottom: 20px;
-        }
-
-        .requirement {
-          color: rgba(255, 255, 255, 0.7);
-          font-size: 14px;
-          margin-bottom: 8px;
-          padding-left: 16px;
-          position: relative;
-        }
-
-        .requirement::before {
-          content: '•';
-          color: #3b82f6;
-          position: absolute;
-          left: 0;
-        }
-
-        .tier-benefits {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .benefit {
-          color: #10b981;
-          font-size: 14px;
-          font-weight: 500;
-        }
-
         .points-history-section {
           background: rgba(255, 255, 255, 0.05);
           border-radius: 20px;
           padding: 32px;
           border: 1px solid rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
         }
 
         .points-history-section h3 {
@@ -994,6 +948,7 @@ Join now: ${referralLink}
           font-size: 24px;
           font-weight: 700;
           margin: 0 0 24px 0;
+          text-align: center;
         }
 
         .history-list {
@@ -1019,7 +974,7 @@ Join now: ${referralLink}
 
         .history-icon {
           font-size: 24px;
-          background: rgba(59, 130, 246, 0.2);
+          background: rgba(0, 245, 255, 0.2);
           border-radius: 50%;
           width: 48px;
           height: 48px;
@@ -1101,6 +1056,10 @@ Join now: ${referralLink}
             justify-content: center;
           }
 
+          .rates-overview {
+            grid-template-columns: 1fr;
+          }
+
           .social-platforms {
             grid-template-columns: 1fr;
           }
@@ -1113,10 +1072,6 @@ Join now: ${referralLink}
           .referral-stats {
             flex-direction: row;
             justify-content: space-around;
-          }
-
-          .ambassador-tiers {
-            grid-template-columns: 1fr;
           }
 
           .share-buttons {
