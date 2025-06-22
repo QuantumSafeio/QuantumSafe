@@ -30,9 +30,21 @@ export default function Dashboard(props) {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState('');
 
-  // Referral state
+  // Enhanced Referral & Ambassador state
   const [referralLink, setReferralLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [referralStats, setReferralStats] = useState({
+    totalReferrals: 0,
+    totalEarned: 0,
+    activeReferrals: 0
+  });
+  const [ambassadorTier, setAmbassadorTier] = useState('none');
+  const [pointsBreakdown, setPointsBreakdown] = useState({
+    social: 0,
+    referral: 0,
+    scan: 0,
+    total: 0
+  });
 
   // Analytics state
   const [analytics, setAnalytics] = useState({
@@ -216,6 +228,8 @@ export default function Dashboard(props) {
     if (user) {
       fetchUserData();
       generateReferralLink();
+      fetchReferralStats();
+      fetchAmbassadorData();
     }
   }, [user]);
 
@@ -265,6 +279,51 @@ export default function Dashboard(props) {
     setCopied(true);
     toast.success('Referral link copied to clipboard!');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const fetchReferralStats = async () => {
+    try {
+      // Fetch referral statistics
+      const { data: referrals } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_id', user.id);
+
+      const totalReferrals = referrals?.length || 0;
+      const totalEarned = referrals?.reduce((sum, ref) => sum + (ref.total_earned || 0), 0) || 0;
+      const activeReferrals = referrals?.filter(ref => ref.is_active !== false).length || 0;
+
+      setReferralStats({
+        totalReferrals,
+        totalEarned,
+        activeReferrals
+      });
+    } catch (error) {
+      console.error('Error fetching referral stats:', error);
+    }
+  };
+
+  const fetchAmbassadorData = async () => {
+    try {
+      // Fetch user points breakdown
+      const { data: pointsData } = await supabase
+        .from('user_points')
+        .select('points, social_media_points, referral_points, scan_points, ambassador_tier')
+        .eq('user_id', user.id)
+        .single();
+
+      if (pointsData) {
+        setPointsBreakdown({
+          social: pointsData.social_media_points || 0,
+          referral: pointsData.referral_points || 0,
+          scan: pointsData.scan_points || 0,
+          total: pointsData.points || 0
+        });
+        setAmbassadorTier(pointsData.ambassador_tier || 'none');
+      }
+    } catch (error) {
+      console.error('Error fetching ambassador data:', error);
+    }
   };
 
   const fetchUserData = async () => {
@@ -414,6 +473,8 @@ export default function Dashboard(props) {
       }
 
       fetchUserData();
+      fetchReferralStats();
+      fetchAmbassadorData();
       toast.success('Scan completed successfully!');
       
     } catch (error) {
@@ -434,6 +495,8 @@ export default function Dashboard(props) {
     console.log('Payment successful:', paymentResult);
     toast.success('Payment completed successfully!');
     fetchUserData();
+    fetchReferralStats();
+    fetchAmbassadorData();
   };
 
   const assetTypes = [
@@ -446,11 +509,19 @@ export default function Dashboard(props) {
 
   const tabs = [
     { id: 'scanner', label: 'Quantum Scanner', icon: '🔍' },
-    { id: 'analytics', label: 'Security Analytics', icon: '📊' },
-    { id: 'history', label: 'Scan History', icon: '📋' },
-    { id: 'threats', label: 'Threat Intelligence', icon: '🛡️' },
-    { id: 'points', label: 'Points & Rewards', icon: '💎' }
+    { id: 'points', label: 'Points & Rewards', icon: '💎' },
+    { id: 'referrals', label: 'Referral System', icon: '🔗' },
+    { id: 'ambassador', label: 'Ambassador Program', icon: '👑' },
+    { id: 'history', label: 'Scan History', icon: '📋' }
   ];
+
+  // Ambassador tier configurations
+  const ambassadorTiers = {
+    none: { name: 'Member', icon: '👤', color: '#6B7280', requirements: 'Join the community' },
+    bronze: { name: 'Bronze Ambassador', icon: '🥉', color: '#CD7F32', requirements: '10+ referrals, 500+ points, 5+ social posts' },
+    silver: { name: 'Silver Ambassador', icon: '🥈', color: '#C0C0C0', requirements: '25+ referrals, 1500+ points, 15+ social posts' },
+    gold: { name: 'Gold Ambassador', icon: '🥇', color: '#FFD700', requirements: '50+ referrals, 5000+ points, 30+ social posts' }
+  };
 
   if (loading) {
     return (
@@ -609,6 +680,32 @@ export default function Dashboard(props) {
             alignItems: 'center',
             gap: '20px'
           }}>
+            {/* Ambassador Status */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '8px 16px',
+              background: `rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
+                                ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
+                                ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.1)`,
+              border: `1px solid rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
+                                     ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
+                                     ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.3)`,
+              borderRadius: '12px'
+            }}>
+              <span style={{ fontSize: '16px' }}>{ambassadorTiers[ambassadorTier].icon}</span>
+              <span style={{
+                fontSize: '12px',
+                color: ambassadorTiers[ambassadorTier].color,
+                fontWeight: '600',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}>
+                {ambassadorTiers[ambassadorTier].name}
+              </span>
+            </div>
+
             {/* Wallet Connection Status */}
             {web3Address ? (
               <div style={{
@@ -1021,6 +1118,723 @@ export default function Dashboard(props) {
           </div>
         )}
 
+        {/* Points & Rewards Tab */}
+        {activeTab === 'points' && <PromoTweets />}
+
+        {/* Referrals Tab */}
+        {activeTab === 'referrals' && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '20px',
+            padding: '40px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '40px'
+            }}>
+              <h2 style={{
+                fontSize: '32px',
+                fontWeight: '700',
+                background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                marginBottom: '12px'
+              }}>
+                🔗 Enhanced Referral System
+              </h2>
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '18px',
+                maxWidth: '600px',
+                margin: '0 auto',
+                lineHeight: '1.6'
+              }}>
+                Earn 7% of all points your referrals generate forever! Build your quantum security empire.
+              </p>
+            </div>
+
+            {/* Referral Stats Overview */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '24px',
+              marginBottom: '40px'
+            }}>
+              <div style={{
+                background: 'rgba(255, 215, 0, 0.1)',
+                border: '1px solid rgba(255, 215, 0, 0.3)',
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>👥</div>
+                <div style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#ffd700',
+                  marginBottom: '4px'
+                }}>
+                  {referralStats.totalReferrals}
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '14px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  Total Referrals
+                </div>
+              </div>
+
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>💰</div>
+                <div style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#10b981',
+                  marginBottom: '4px'
+                }}>
+                  {referralStats.totalEarned.toFixed(1)}
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '14px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  Points Earned
+                </div>
+              </div>
+
+              <div style={{
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚡</div>
+                <div style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#3b82f6',
+                  marginBottom: '4px'
+                }}>
+                  {referralStats.activeReferrals}
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '14px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  Active Referrals
+                </div>
+              </div>
+
+              <div style={{
+                background: 'rgba(139, 92, 246, 0.1)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>📈</div>
+                <div style={{
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#8b5cf6',
+                  marginBottom: '4px'
+                }}>
+                  7%
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  fontSize: '14px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
+                }}>
+                  Commission Rate
+                </div>
+              </div>
+            </div>
+
+            {/* Referral Link Section */}
+            <div style={{
+              background: 'rgba(0, 245, 255, 0.1)',
+              border: '1px solid rgba(0, 245, 255, 0.3)',
+              borderRadius: '16px',
+              padding: '32px',
+              marginBottom: '40px'
+            }}>
+              <h3 style={{
+                color: '#00f5ff',
+                fontSize: '24px',
+                fontWeight: '700',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                🎯 Your Enhanced Referral Link
+              </h3>
+              
+              <div style={{
+                display: 'flex',
+                gap: '16px',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <input
+                  type="text"
+                  value={referralLink}
+                  readOnly
+                  style={{
+                    flex: 1,
+                    padding: '16px 20px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: '#ffffff',
+                    fontFamily: 'monospace',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                />
+                <button
+                  onClick={copyReferralLink}
+                  style={{
+                    padding: '16px 24px',
+                    background: copied ? 
+                      'linear-gradient(45deg, #10b981, #059669)' : 
+                      'linear-gradient(45deg, #00f5ff, #0099cc)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 16px rgba(0, 245, 255, 0.3)'
+                  }}
+                >
+                  {copied ? '✅ Copied!' : '📋 Copy Link'}
+                </button>
+              </div>
+
+              {web3Address && (
+                <div style={{
+                  padding: '16px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    color: '#10b981',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}>
+                    ✨ Enhanced Referral: Your link is connected to wallet {web3Address.slice(0, 8)}...{web3Address.slice(-6)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* How It Works */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '16px',
+              padding: '32px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <h3 style={{
+                color: '#ffffff',
+                fontSize: '24px',
+                fontWeight: '700',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                💰 How the Enhanced Referral System Works
+              </h3>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '24px'
+              }}>
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  borderLeft: '4px solid #10b981'
+                }}>
+                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>🎁</div>
+                  <h4 style={{
+                    color: '#ffffff',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    marginBottom: '8px'
+                  }}>
+                    Earn 7% Forever
+                  </h4>
+                  <p style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    margin: 0
+                  }}>
+                    Get 7% of all points your referrals earn from any activity - scans, social media, payments - for life!
+                  </p>
+                </div>
+
+                <div style={{
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  borderLeft: '4px solid #3b82f6'
+                }}>
+                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>🚀</div>
+                  <h4 style={{
+                    color: '#ffffff',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    marginBottom: '8px'
+                  }}>
+                    Instant Rewards
+                  </h4>
+                  <p style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    margin: 0
+                  }}>
+                    Points are credited immediately when your referrals earn them. No waiting, no delays.
+                  </p>
+                </div>
+
+                <div style={{
+                  background: 'rgba(139, 92, 246, 0.1)',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  borderLeft: '4px solid #8b5cf6'
+                }}>
+                  <div style={{ fontSize: '32px', marginBottom: '16px' }}>📈</div>
+                  <h4 style={{
+                    color: '#ffffff',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    marginBottom: '8px'
+                  }}>
+                    Unlimited Potential
+                  </h4>
+                  <p style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    margin: 0
+                  }}>
+                    No limit on referrals or earnings. Build your quantum security empire and earn passive income!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ambassador Program Tab */}
+        {activeTab === 'ambassador' && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '20px',
+            padding: '40px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '40px'
+            }}>
+              <h2 style={{
+                fontSize: '32px',
+                fontWeight: '700',
+                background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                marginBottom: '12px'
+              }}>
+                👑 Ambassador Program
+              </h2>
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '18px',
+                maxWidth: '600px',
+                margin: '0 auto',
+                lineHeight: '1.6'
+              }}>
+                Unlock exclusive benefits and earn more points as you grow with QuantumSafe
+              </p>
+            </div>
+
+            {/* Current Status */}
+            <div style={{
+              background: `rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
+                              ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
+                              ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.1)`,
+              border: `1px solid rgba(${ambassadorTiers[ambassadorTier].color === '#FFD700' ? '255, 215, 0' : 
+                                     ambassadorTiers[ambassadorTier].color === '#C0C0C0' ? '192, 192, 192' :
+                                     ambassadorTiers[ambassadorTier].color === '#CD7F32' ? '205, 127, 50' : '107, 114, 128'}, 0.3)`,
+              borderRadius: '16px',
+              padding: '32px',
+              marginBottom: '40px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '16px' }}>
+                {ambassadorTiers[ambassadorTier].icon}
+              </div>
+              <h3 style={{
+                color: ambassadorTiers[ambassadorTier].color,
+                fontSize: '28px',
+                fontWeight: '700',
+                marginBottom: '8px'
+              }}>
+                Current Status: {ambassadorTiers[ambassadorTier].name}
+              </h3>
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '16px',
+                margin: 0
+              }}>
+                {ambassadorTiers[ambassadorTier].requirements}
+              </p>
+            </div>
+
+            {/* Points Breakdown */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '16px',
+              padding: '32px',
+              marginBottom: '40px',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+              <h3 style={{
+                color: '#ffffff',
+                fontSize: '24px',
+                fontWeight: '700',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                📊 Your Points Breakdown
+              </h3>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '24px'
+              }}>
+                <div style={{
+                  background: 'rgba(29, 161, 242, 0.1)',
+                  border: '1px solid rgba(29, 161, 242, 0.3)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>📱</div>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '700',
+                    color: '#1da1f2',
+                    marginBottom: '4px'
+                  }}>
+                    {pointsBreakdown.social.toFixed(1)}
+                  </div>
+                  <div style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px'
+                  }}>
+                    Social Media Points
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(255, 215, 0, 0.1)',
+                  border: '1px solid rgba(255, 215, 0, 0.3)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔗</div>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '700',
+                    color: '#ffd700',
+                    marginBottom: '4px'
+                  }}>
+                    {pointsBreakdown.referral.toFixed(1)}
+                  </div>
+                  <div style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px'
+                  }}>
+                    Referral Points
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '700',
+                    color: '#10b981',
+                    marginBottom: '4px'
+                  }}>
+                    {pointsBreakdown.scan.toFixed(1)}
+                  </div>
+                  <div style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px'
+                  }}>
+                    Scan Points
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(139, 92, 246, 0.1)',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>💎</div>
+                  <div style={{
+                    fontSize: '24px',
+                    fontWeight: '700',
+                    color: '#8b5cf6',
+                    marginBottom: '4px'
+                  }}>
+                    {pointsBreakdown.total.toFixed(1)}
+                  </div>
+                  <div style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '14px'
+                  }}>
+                    Total Points
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ambassador Tiers */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '24px'
+            }}>
+              {/* Bronze Tier */}
+              <div style={{
+                background: 'rgba(205, 127, 50, 0.1)',
+                border: `2px solid ${ambassadorTier === 'bronze' ? '#CD7F32' : 'rgba(205, 127, 50, 0.3)'}`,
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-4px)';
+                e.target.style.boxShadow = '0 12px 32px rgba(205, 127, 50, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}>
+                {ambassadorTier === 'bronze' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    background: '#CD7F32',
+                    color: 'white',
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}>
+                    CURRENT
+                  </div>
+                )}
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥉</div>
+                <h4 style={{
+                  color: '#CD7F32',
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  marginBottom: '16px'
+                }}>
+                  Bronze Ambassador
+                </h4>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  fontSize: '14px',
+                  marginBottom: '20px',
+                  lineHeight: '1.6'
+                }}>
+                  • 10+ Referrals<br/>
+                  • 500+ Points<br/>
+                  • 5+ Social Posts
+                </div>
+                <div style={{
+                  color: '#CD7F32',
+                  fontSize: '16px',
+                  fontWeight: '600'
+                }}>
+                  10% Bonus on all points
+                </div>
+              </div>
+
+              {/* Silver Tier */}
+              <div style={{
+                background: 'rgba(192, 192, 192, 0.1)',
+                border: `2px solid ${ambassadorTier === 'silver' ? '#C0C0C0' : 'rgba(192, 192, 192, 0.3)'}`,
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-4px)';
+                e.target.style.boxShadow = '0 12px 32px rgba(192, 192, 192, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}>
+                {ambassadorTier === 'silver' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    background: '#C0C0C0',
+                    color: 'white',
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}>
+                    CURRENT
+                  </div>
+                )}
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥈</div>
+                <h4 style={{
+                  color: '#C0C0C0',
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  marginBottom: '16px'
+                }}>
+                  Silver Ambassador
+                </h4>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  fontSize: '14px',
+                  marginBottom: '20px',
+                  lineHeight: '1.6'
+                }}>
+                  • 25+ Referrals<br/>
+                  • 1,500+ Points<br/>
+                  • 15+ Social Posts
+                </div>
+                <div style={{
+                  color: '#C0C0C0',
+                  fontSize: '16px',
+                  fontWeight: '600'
+                }}>
+                  15% Bonus + Monthly rewards
+                </div>
+              </div>
+
+              {/* Gold Tier */}
+              <div style={{
+                background: 'rgba(255, 215, 0, 0.1)',
+                border: `2px solid ${ambassadorTier === 'gold' ? '#FFD700' : 'rgba(255, 215, 0, 0.3)'}`,
+                borderRadius: '16px',
+                padding: '24px',
+                textAlign: 'center',
+                transition: 'all 0.3s ease',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'translateY(-4px)';
+                e.target.style.boxShadow = '0 12px 32px rgba(255, 215, 0, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = 'none';
+              }}>
+                {ambassadorTier === 'gold' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    background: '#FFD700',
+                    color: 'black',
+                    padding: '4px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '600'
+                  }}>
+                    CURRENT
+                  </div>
+                )}
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥇</div>
+                <h4 style={{
+                  color: '#FFD700',
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  marginBottom: '16px'
+                }}>
+                  Gold Ambassador
+                </h4>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  fontSize: '14px',
+                  marginBottom: '20px',
+                  lineHeight: '1.6'
+                }}>
+                  • 50+ Referrals<br/>
+                  • 5,000+ Points<br/>
+                  • 30+ Social Posts
+                </div>
+                <div style={{
+                  color: '#FFD700',
+                  fontSize: '16px',
+                  fontWeight: '600'
+                }}>
+                  25% Bonus + Premium NFTs
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* History Tab */}
         {activeTab === 'history' && (
           <div style={{
@@ -1137,9 +1951,6 @@ export default function Dashboard(props) {
           </div>
         )}
 
-        {/* Points & Rewards Tab */}
-        {activeTab === 'points' && <PromoTweets />}
-
         {/* Scan Result Display */}
         {currentScanResult && (
           <ScanResult 
@@ -1148,277 +1959,6 @@ export default function Dashboard(props) {
             user={user}
           />
         )}
-
-        {/* Referral Section - Always visible at bottom */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '20px',
-          padding: '32px',
-          marginTop: '40px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(20px)'
-        }}>
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '32px'
-          }}>
-            <h3 style={{
-              fontSize: '28px',
-              fontWeight: '700',
-              background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: '8px'
-            }}>
-              🔗 Your Enhanced Referral Link
-            </h3>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: '16px',
-              margin: 0
-            }}>
-              Earn 7% of all points your referrals generate forever!
-            </p>
-          </div>
-          
-          <div style={{
-            display: 'flex',
-            gap: '16px',
-            alignItems: 'center',
-            maxWidth: '800px',
-            margin: '0 auto'
-          }}>
-            <input
-              type="text"
-              value={referralLink}
-              readOnly
-              style={{
-                flex: 1,
-                padding: '16px 20px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '12px',
-                fontSize: '14px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: '#ffffff',
-                fontFamily: 'monospace',
-                backdropFilter: 'blur(10px)'
-              }}
-            />
-            <button
-              onClick={copyReferralLink}
-              style={{
-                padding: '16px 24px',
-                background: copied ? 
-                  'linear-gradient(45deg, #10b981, #059669)' : 
-                  'linear-gradient(45deg, #00f5ff, #0099cc)',
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 4px 16px rgba(0, 245, 255, 0.3)'
-              }}
-            >
-              {copied ? '✅ Copied!' : '📋 Copy Link'}
-            </button>
-          </div>
-
-          {web3Address && (
-            <div style={{
-              marginTop: '20px',
-              padding: '16px',
-              background: 'rgba(16, 185, 129, 0.1)',
-              borderRadius: '12px',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                color: '#10b981',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                ✨ Enhanced Referral: Your link is connected to wallet {web3Address.slice(0, 8)}...{web3Address.slice(-6)}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Ambassador Program Section - Always visible */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '20px',
-          padding: '32px',
-          marginTop: '24px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(20px)'
-        }}>
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '32px'
-          }}>
-            <h3 style={{
-              fontSize: '28px',
-              fontWeight: '700',
-              background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: '8px'
-            }}>
-              👑 Ambassador Program
-            </h3>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: '16px',
-              margin: 0
-            }}>
-              Unlock exclusive benefits and earn more points as you grow with QuantumSafe
-            </p>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '24px'
-          }}>
-            {/* Bronze Tier */}
-            <div style={{
-              background: 'rgba(205, 127, 50, 0.1)',
-              border: '1px solid rgba(205, 127, 50, 0.3)',
-              borderRadius: '16px',
-              padding: '24px',
-              textAlign: 'center',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-4px)';
-              e.target.style.boxShadow = '0 12px 32px rgba(205, 127, 50, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥉</div>
-              <h4 style={{
-                color: '#cd7f32',
-                fontSize: '20px',
-                fontWeight: '700',
-                marginBottom: '16px'
-              }}>
-                Bronze Ambassador
-              </h4>
-              <div style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: '14px',
-                marginBottom: '20px',
-                lineHeight: '1.6'
-              }}>
-                • 10+ Referrals<br/>
-                • 500+ Points<br/>
-                • 5+ Social Posts
-              </div>
-              <div style={{
-                color: '#cd7f32',
-                fontSize: '16px',
-                fontWeight: '600'
-              }}>
-                10% Bonus on all points
-              </div>
-            </div>
-
-            {/* Silver Tier */}
-            <div style={{
-              background: 'rgba(192, 192, 192, 0.1)',
-              border: '1px solid rgba(192, 192, 192, 0.3)',
-              borderRadius: '16px',
-              padding: '24px',
-              textAlign: 'center',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-4px)';
-              e.target.style.boxShadow = '0 12px 32px rgba(192, 192, 192, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥈</div>
-              <h4 style={{
-                color: '#c0c0c0',
-                fontSize: '20px',
-                fontWeight: '700',
-                marginBottom: '16px'
-              }}>
-                Silver Ambassador
-              </h4>
-              <div style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: '14px',
-                marginBottom: '20px',
-                lineHeight: '1.6'
-              }}>
-                • 25+ Referrals<br/>
-                • 1,500+ Points<br/>
-                • 15+ Social Posts
-              </div>
-              <div style={{
-                color: '#c0c0c0',
-                fontSize: '16px',
-                fontWeight: '600'
-              }}>
-                15% Bonus + Monthly rewards
-              </div>
-            </div>
-
-            {/* Gold Tier */}
-            <div style={{
-              background: 'rgba(255, 215, 0, 0.1)',
-              border: '1px solid rgba(255, 215, 0, 0.3)',
-              borderRadius: '16px',
-              padding: '24px',
-              textAlign: 'center',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-4px)';
-              e.target.style.boxShadow = '0 12px 32px rgba(255, 215, 0, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = 'none';
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🥇</div>
-              <h4 style={{
-                color: '#ffd700',
-                fontSize: '20px',
-                fontWeight: '700',
-                marginBottom: '16px'
-              }}>
-                Gold Ambassador
-              </h4>
-              <div style={{
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontSize: '14px',
-                marginBottom: '20px',
-                lineHeight: '1.6'
-              }}>
-                • 50+ Referrals<br/>
-                • 5,000+ Points<br/>
-                • 30+ Social Posts
-              </div>
-              <div style={{
-                color: '#ffd700',
-                fontSize: '16px',
-                fontWeight: '600'
-              }}>
-                25% Bonus + Premium NFTs
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Multi-Chain Payment Modal */}
         <MultiChainPaymentModal
