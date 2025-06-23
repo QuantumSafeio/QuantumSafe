@@ -1,7 +1,4 @@
 // Enhanced Twitter API service with improved points system
-const TWITTER_API_KEY = 'a53CYhaKrHlDQmXLJ9odT0a2g';
-const TWITTER_API_SECRET = 'I6SYOWLUzPaj9cnwM7ZPtyY3J4Shqp8h70tkPBIAM0kM7tG9Zl';
-const TWITTER_BEARER_TOKEN = 'AAAAAAAAAAAAAAAAAAAAAJQ82QEAAAAAE7fW6XZRMK4KtaMLLFjXwSZKtXY%3DOrU8SwpMJ8NJAkUCeSAOz7rkUqzO3SUmGkJxSZuM3Lv1QMNcyJ';
 
 const TWITTER_CALLBACK_URL = `${window.location.origin}/auth/twitter/callback`;
 

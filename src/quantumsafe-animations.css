@@ -1,0 +1,34 @@
+/* Custom animation utilities for QuantumSafe dashboard */
+
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 16px #a78bfa, 0 0 32px #f472b6, 0 0 48px #f87171; }
+  50% { text-shadow: 0 0 32px #a78bfa, 0 0 64px #f472b6, 0 0 96px #f87171; }
+}
+.animate-glow {
+  animation: glow 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 3s ease-in-out infinite;
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-bounce-slow {
+  animation: bounce-slow 2.5s infinite;
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.9s cubic-bezier(0.23, 1, 0.32, 1) both;
+}

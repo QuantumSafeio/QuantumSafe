@@ -434,4 +434,20 @@ class MultiChainWalletService {
   }
 }
 
+// Add Solana Web3 import for browser
+if (typeof window !== 'undefined' && !window.solanaWeb3) {
+  try {
+    // Dynamically load Solana Web3 if not present
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@solana/web3.js@latest/lib/index.iife.js';
+    script.async = true;
+    script.onload = () => {
+      window.solanaWeb3 = window.solanaWeb3 || window.solanaWeb3;
+    };
+    document.body.appendChild(script);
+  } catch (e) {
+    // Ignore
+  }
+}
+
 export const multiChainWallet = new MultiChainWalletService();

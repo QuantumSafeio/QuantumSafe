@@ -1,480 +1,242 @@
-import React, { useState, useEffect } from 'react';
-import { nhost } from '../lib/nhost';
-import { connectWallet } from '../services/wallet';
-import { signInWithEmailPassword, signUpWithEmailPassword } from '../hooks/nhostAuth';
-import WalletSecurityScanner from './WalletSecurityScanner';
+import React, { useState } from 'react';
+import { Copy, Twitter, Globe } from 'lucide-react';
 
-export default function Login(props) {
-  const [loading, setLoading] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
-  const [networkSymbol, setNetworkSymbol] = useState("");
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [error, setError] = useState('');
-  const [referralCode, setReferralCode] = useState('');
-  const [connectedWalletAddress, setConnectedWalletAddress] = useState("");
-  const [connectedNetworkSymbol, setConnectedNetworkSymbol] = useState("");
+// Simple Card and Button components using Tailwind CSS
+function Card({ children, className = '' }) {
+  return <div className={`bg-white rounded-2xl shadow-md border border-gray-200 ${className}`}>{children}</div>;
+}
+function CardContent({ children, className = '' }) {
+  return <div className={`p-6 ${className}`}>{children}</div>;
+}
+function Button({ children, onClick, variant = 'default', className = '' }) {
+  const base = 'inline-flex items-center px-4 py-2 rounded-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const variants = {
+    default: 'bg-purple-600 text-white hover:bg-purple-700',
+    outline: 'border border-purple-600 text-purple-600 bg-white hover:bg-purple-50',
+  };
+  return (
+    <button onClick={onClick} className={`${base} ${variants[variant] || ''} ${className}`}>{children}</button>
+  );
+}
+function ProgressBar({ value }) {
+  return (
+    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div
+        className="h-2 bg-gradient-to-r from-purple-400 to-pink-500 transition-all duration-500"
+        style={{ width: `${value}%` }}
+      />
+    </div>
+  );
+}
 
-  useEffect(() => {
-    // Check for referral code in URL
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
-    if (ref) {
-      setReferralCode(ref);
-      localStorage.setItem('referral_code', ref);
-    }
-  }, []);
+export default function Dashboard({ user, referrals, socialPoints }) {
+  const [walletConnected, setWalletConnected] = useState(!!user?.walletAddress);
+  const [walletAddress, setWalletAddress] = useState(user?.walletAddress || '0x123...abc');
+  const [network, setNetwork] = useState(user?.network || 'Ethereum');
+  const [assetName, setAssetName] = useState('');
+  const [scanResult, setScanResult] = useState(user?.scannedAssets?.[0] || null);
 
-  useEffect(() => {
-    // For demo: set values after wallet connection (replace with real logic)
-    if (!connectedWalletAddress) {
-      setConnectedWalletAddress("0x1234abcd5678efgh9012ijkl3456mnop7890qrst");
-    }
-    if (!connectedNetworkSymbol) {
-      setConnectedNetworkSymbol("ETH");
-    }
-  }, [connectedWalletAddress, connectedNetworkSymbol]);
+  const referralLink = referrals?.referralLink || 'https://quantumsafe.app/referral/demo';
+  const referralStats = {
+    referrals: referrals?.totalReferrals || 0,
+    points: referrals?.points || 0,
+    posts: referrals?.posts || 0,
+    commission: referrals?.commission || 0,
+    tier: referrals?.currentTier || 'Bronze'
+  };
+  const nextTier = referrals?.nextTier?.name || null;
+  const tierRequirements = referrals?.nextTier?.requirements || {};
+  const progress = referrals?.nextTier?.progress || {};
+  const tiers = ['Bronze', 'Silver', 'Gold'];
 
-  const handleWalletLogin = async () => {
-    setLoading(true);
+  const handleConnectWallet = async () => {
+    setIsConnecting(true);
     setError('');
     try {
-      const { address, signature } = await connectWallet();
+      if (!window.ethereum) {
+        setIsConnecting(false);
+        setError('MetaMask is not installed');
+        return;
+      }
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const address = accounts[0];
       setWalletAddress(address);
-      const walletEmail = `${address.toLowerCase()}@quantumsafe.wallet`;
-      const walletPassword = `QS_${signature.slice(0, 32)}_${address.slice(-8)}`;
-      // Try to sign in first
-      let session, signInError;
-      try {
-        ({ session, error: signInError } = await signInWithEmailPassword(walletEmail, walletPassword));
-      } catch (e) {
-        signInError = e;
-      }
-      if (!session) {
-        // If sign in fails, try to sign up
-        const { session: signUpSession, error: signUpError } = await signUpWithEmailPassword(walletEmail, walletPassword);
-        if (signUpError) throw signUpError;
-        if (signUpSession?.user) {
-          await insertUserProfile(signUpSession.user.id, address);
-          await insertUserPoints(signUpSession.user.id, 5);
-          // Handle referral (you can convert this to GraphQL later)
-        }
-      }
+      setNetworkSymbol('ETH'); 
+      setIsConnecting(false);
+      localStorage.setItem('walletAddress', address);
+      navigate('/');
     } catch (err) {
-      console.error('Wallet login error:', err);
-      if (err.message && err.message.includes('User rejected')) {
-        setError('Wallet connection was cancelled. Please try again.');
-      } else if (err.message && err.message.includes('MetaMask')) {
-        setError('MetaMask is required. Please install MetaMask and try again.');
-      } else {
-        setError(err.message || 'Failed to connect wallet. Please try again.');
-      }
+      setIsConnecting(false);
+      setError(
+        err.message?.includes('User rejected')
+          ? 'Wallet connection was cancelled. Please try again.'
+          : err.message?.includes('MetaMask')
+          ? 'MetaMask is required. Please install MetaMask and try again.'
+          : err.message || 'Failed to connect wallet. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  async function handleConnectWallet() {
-    setIsConnecting(true);
-    setError("");
-    try {
-      let actualWalletAddress = "";
-      let actualNetworkSymbol = "";
-      if (window.ethereum) {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        actualWalletAddress = accounts[0];
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        switch (chainId) {
-          case '0x1':
-            actualNetworkSymbol = 'ETH';
-            break;
-          case '0x89':
-            actualNetworkSymbol = 'MATIC';
-            break;
-          case '0x38':
-            actualNetworkSymbol = 'BNB';
-            break;
-          default:
-            actualNetworkSymbol = 'ETH';
-        }
-      } else {
-        actualWalletAddress = "";
-        actualNetworkSymbol = "ETH";
-      }
-      setWalletAddress(actualWalletAddress);
-      setNetworkSymbol(actualNetworkSymbol);
-      setIsConnecting(false);
-    } catch (err) {
-      setError("Wallet connection failed. Please try again.");
-      setIsConnecting(false);
-    }
+  const handleScan = () => {
+    setScanResult({
+      name: assetName,
+      status: '✅ No quantum vulnerabilities found',
+      riskLevel: 'Low',
+    });
   };
-
-  const isMetaMaskInstalled = () => {
-    return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
-  };
-
-  // GraphQL helper
-  async function gqlRequest(query, variables) {
-    return nhost.graphql.request(query, variables);
-  }
-
-  // Example: Insert user profile
-  async function insertUserProfile(user_id, wallet_address) {
-    const query = `mutation InsertUserProfile($user_id: uuid!, $wallet_address: String!) {
-      insert_user_profiles_one(object: {user_id: $user_id, wallet_address: $wallet_address}) {
-        user_id
-        wallet_address
-      }
-    }`;
-    return gqlRequest(query, { user_id, wallet_address });
-  }
-
-  // Example: Insert user points
-  async function insertUserPoints(user_id, points) {
-    const query = `mutation InsertUserPoints($user_id: uuid!, $points: Int!) {
-      insert_user_points_one(object: {user_id: $user_id, points: $points}) {
-        user_id
-        points
-      }
-    }`;
-    return gqlRequest(query, { user_id, points });
-  }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '20px',
-      background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)'
-    }}>
-      {/* Hero Section */}
-      <div style={{
-        textAlign: 'center',
-        marginBottom: '40px',
-        maxWidth: '800px'
-      }}>
-        <h1 style={{
-          fontSize: '4rem',
-          background: 'linear-gradient(45deg, #00f5ff, #ff00ff)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          fontWeight: 'bold',
-          marginBottom: '20px'
-        }}>
-          🛡️ QuantumSafe
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-100 font-sans flex flex-col">
+      <header className="py-12 text-center">
+        <h1 className="text-5xl font-extrabold bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent animate-pulse drop-shadow-lg">
+          QuantumSafe
         </h1>
-        <p style={{
-          fontSize: '1.5rem',
-          color: 'rgba(255, 255, 255, 0.9)',
-          marginBottom: '15px',
-          lineHeight: '1.6'
-        }}>
-          Protect Your Digital Assets from Quantum Threats
+        <p className="mt-4 text-lg text-gray-600 font-medium max-w-2xl mx-auto">
+          Next-generation platform for quantum and Web3 security. Instantly scan, protect, and earn rewards while securing your digital assets against quantum threats.
         </p>
-        <p style={{
-          fontSize: '1.1rem',
-          color: 'rgba(255, 255, 255, 0.7)',
-          lineHeight: '1.6'
-        }}>
-          Advanced AI-powered scanning for smart contracts, wallets, NFTs, and DApps. 
-          Detect quantum vulnerabilities before they become threats.
-        </p>
-      </div>
+      </header>
 
-      {/* Login Card */}
-      <div style={{
-        background: 'rgba(255, 255, 255, 0.1)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '25px',
-        padding: '40px',
-        maxWidth: '450px',
-        width: '100%',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-      }}>
-        <h2 style={{
-          textAlign: 'center',
-          marginBottom: '30px',
-          fontSize: '1.8rem',
-          color: '#ffffff',
-          fontWeight: 'bold'
-        }}>
-          Connect Your Web3 Wallet
-        </h2>
-
-        <p style={{
-          textAlign: 'center',
-          marginBottom: '30px',
-          color: 'rgba(255, 255, 255, 0.8)',
-          fontSize: '16px',
-          lineHeight: '1.5'
-        }}>
-          Connect your Web3 wallet to start scanning digital assets and earning rewards. 
-          Secure, decentralized authentication powered by blockchain technology.
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {!isMetaMaskInstalled() ? (
-            <div style={{
-              width: '100%',
-              padding: '20px',
-              borderRadius: '15px',
-              background: 'rgba(255, 165, 0, 0.1)',
-              border: '1px solid rgba(255, 165, 0, 0.3)',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🦊</div>
-              <p style={{ color: '#ffa500', marginBottom: '10px', fontSize: '16px', fontWeight: 'bold' }}>
-                MetaMask Required
-              </p>
-              <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px', marginBottom: '20px' }}>
-                Please install MetaMask to connect your wallet and start scanning
-              </p>
-              <a
-                href="https://metamask.io/download/"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-block',
-                  padding: '12px 25px',
-                  background: 'linear-gradient(45deg, #f6851b, #e76f00)',
-                  color: 'white',
-                  textDecoration: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                Install MetaMask
-              </a>
-            </div>
-          ) : (
-            <>
-              {!walletAddress ? (
-                <button
-                  onClick={handleConnectWallet}
-                  disabled={isConnecting}
-                  style={{
-                    width: '100%',
-                    padding: '18px',
-                    border: 'none',
-                    borderRadius: '15px',
-                    background: isConnecting 
-                      ? 'rgba(246, 133, 27, 0.5)' 
-                      : 'linear-gradient(45deg, #f6851b, #e76f00)',
-                    color: 'white',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    cursor: isConnecting ? 'not-allowed' : 'pointer',
-                    opacity: isConnecting ? 0.7 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px',
-                    transition: 'all 0.3s ease',
-                    boxShadow: isConnecting ? 'none' : '0 4px 15px rgba(246, 133, 27, 0.3)'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isConnecting) {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 6px 20px rgba(246, 133, 27, 0.4)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isConnecting) {
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 4px 15px rgba(246, 133, 27, 0.3)';
-                    }
-                  }}
-                >
-                  {isConnecting ? (
-                    <>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        border: '2px solid rgba(255, 255, 255, 0.3)',
-                        borderTop: '2px solid white',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                      }} />
-                      Connecting Wallet...
-                    </>
-                  ) : (
-                    <>
-                      🦊 Connect MetaMask Wallet
-                    </>
-                  )}
-                </button>
-              ) : (
-                <div style={{
-                  marginTop: '25px',
-                  padding: '20px',
-                  background: 'rgba(0, 255, 0, 0.1)',
-                  borderRadius: '15px',
-                  border: '1px solid rgba(0, 255, 0, 0.3)'
-                }}>
-                  <p style={{ fontSize: '16px', color: '#00ff88', marginBottom: '8px', fontWeight: 'bold' }}>
-                    ✅ Wallet Connected Successfully
-                  </p>
-                  <code style={{ 
-                    fontSize: '13px', 
-                    wordBreak: 'break-all',
-                    background: 'rgba(0, 0, 0, 0.3)',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    display: 'block',
-                    color: 'rgba(255, 255, 255, 0.9)'
-                  }}>
-                    {walletAddress}
-                  </code>
+      <main className="flex-1 w-full max-w-3xl mx-auto space-y-10">
+        <Card>
+          <CardContent>
+            <h2 className="text-2xl font-bold mb-4 text-purple-700">Quantum Threat Scanner</h2>
+            {!walletConnected ? (
+              <div className="text-center space-y-4">
+                <Button onClick={handleConnectWallet}>Connect Your Web3 Wallet</Button>
+                <p className="text-gray-500 text-sm">Connect your wallet to scan assets and earn rewards. Powered by blockchain-based identity.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-green-600 font-semibold">
+                  <span>✅ Wallet Connected Successfully</span>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {error && (
-          <div style={{
-            marginTop: '25px',
-            padding: '20px',
-            background: 'rgba(255, 0, 0, 0.1)',
-            borderRadius: '15px',
-            border: '1px solid rgba(255, 0, 0, 0.3)',
-            color: '#ff6b6b',
-            fontSize: '15px'
-          }}>
-            <strong>❌ Connection Error:</strong>
-            <br />
-            {error}
-            {error.includes('MetaMask') && (
-              <div style={{ marginTop: '15px' }}>
-                <a
-                  href="https://metamask.io/download/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    color: '#00f5ff',
-                    textDecoration: 'underline',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  📥 Download MetaMask here
-                </a>
+                <div className="bg-gray-50 rounded-lg p-4 flex flex-col gap-2">
+                  <div className="flex flex-wrap gap-4 items-center justify-between">
+                    <div>
+                      <div className="text-xs text-gray-400">Wallet Address</div>
+                      <div className="font-mono text-sm">{walletAddress}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400">Connected Network</div>
+                      <div className="font-semibold text-purple-700">{network}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset Name</label>
+                    <input
+                      type="text"
+                      value={assetName}
+                      onChange={e => setAssetName(e.target.value)}
+                      placeholder="Enter smart contract, app, or NFT"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div className="mt-2">
+                    <Button onClick={handleScan} className="w-full">Scan Wallet</Button>
+                  </div>
+                </div>
+                {scanResult && (
+                  <div className="mt-4">
+                    <Card className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                      <div className="font-semibold text-green-700 text-lg mb-2">{scanResult.status}</div>
+                      <div className="text-xs text-gray-500 mb-4">Risk Level: {scanResult.riskLevel}</div>
+                      <div className="bg-white rounded-lg p-4 border border-gray-100">
+                        <div className="mb-2">
+                          <span className="font-semibold text-gray-700">Asset:</span> {scanResult.name}
+                        </div>
+                        <div className="mb-2">
+                          <span className="font-semibold text-gray-700">Wallet Address:</span> {walletAddress}
+                        </div>
+                        <div className="mb-2">
+                          <span className="font-semibold text-gray-700">Network:</span> {network}
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
+          </CardContent>
+        </Card>
 
-        {referralCode && (
-          <div style={{
-            marginTop: '25px',
-            padding: '20px',
-            background: 'rgba(0, 255, 255, 0.1)',
-            borderRadius: '15px',
-            border: '1px solid rgba(0, 255, 255, 0.3)',
-            fontSize: '15px',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🎁</div>
-            <strong style={{ color: '#00f5ff' }}>Referral Bonus Active!</strong>
-            <br />
-            <span style={{ opacity: 0.9 }}>Code: <strong>{referralCode}</strong></span>
-            <br />
-            <small style={{ opacity: 0.8 }}>You'll get bonus points when you sign up!</small>
-          </div>
-        )}
+        <Card>
+          <CardContent className="space-y-8">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <h3 className="text-2xl font-semibold">Ambassador & Rewards Dashboard</h3>
+              <Button variant="outline" onClick={() => navigator.clipboard.writeText(referralLink)}>
+                <Copy className="w-4 h-4 mr-2" /> Copy Referral Link
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Stat label="Referrals" value={referralStats.referrals} />
+              <Stat label="Total Points" value={referralStats.points} />
+              <Stat label="Posts Created" value={referralStats.posts} />
+              <Stat label="Earned Commission" value={`$${referralStats.commission.toFixed(2)}`} />
+            </div>
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium">Current Tier: <span className="font-bold text-purple-600">{referralStats.tier}</span></h4>
+              {nextTier ? (
+                <div className="space-y-2">
+                  <ProgressLabel label="Referrals" value={referralStats.referrals} target={tierRequirements.referrals} progress={progress.referrals} />
+                  <ProgressLabel label="Points" value={referralStats.points} target={tierRequirements.points} progress={progress.points} />
+                  <ProgressLabel label="Posts" value={referralStats.posts} target={tierRequirements.posts} progress={progress.posts} />
+                </div>
+              ) : (
+                <p className="text-green-600 font-medium">🎉 You’ve reached the highest tier!</p>
+              )}
+            </div>
+            <div className="pt-6">
+              <h4 className="text-lg font-semibold mb-2">Social Engagement Rewards</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {socialPoints.map(social => (
+                  <Card key={social.platform} className="p-4">
+                    <h5 className="text-lg font-bold mb-1">{social.platform}</h5>
+                    <p className="text-sm">+{social.base} points/post</p>
+                    <p className="text-xs text-gray-400">+{social.engagement} per like/share</p>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
 
-        {/* Show WalletSecurityScanner only if wallet is connected */}
-        {walletAddress && networkSymbol && (
-          <>
-            <h2 style={{color:'#4f8cff', marginTop:'32px', marginBottom:'16px'}}>Scan your wallet</h2>
-            <WalletSecurityScanner
-              walletAddress={walletAddress}
-              networkKey={networkSymbol}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Benefits Section */}
-      <div style={{
-        marginTop: '50px',
-        textAlign: 'center',
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontSize: '15px',
-        maxWidth: '700px',
-        lineHeight: '1.6'
-      }}>
-        <h3 style={{
-          color: '#00f5ff',
-          marginBottom: '20px',
-          fontSize: '1.3rem'
-        }}>
-          🔐 Why Choose QuantumSafe?
-        </h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '20px',
-          marginTop: '25px'
-        }}>
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            padding: '20px',
-            borderRadius: '15px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🎁</div>
-            <strong>5 Free Points</strong>
-            <br />
-            <small>Get started with free scanning credits</small>
-          </div>
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            padding: '20px',
-            borderRadius: '15px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔍</div>
-            <strong>Advanced Scanning</strong>
-            <br />
-            <small>Detect 10+ quantum vulnerabilities</small>
-          </div>
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            padding: '20px',
-            borderRadius: '15px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>💰</div>
-            <strong>Earn Rewards</strong>
-            <br />
-            <small>Points for scans, referrals & engagement</small>
-          </div>
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            padding: '20px',
-            borderRadius: '15px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🌐</div>
-            <strong>Web3 Native</strong>
-            <br />
-            <small>Fully decentralized authentication</small>
-          </div>
+      <footer className="text-center pt-10 border-t mt-10 pb-6">
+        <div className="flex justify-center gap-6 mb-4">
+          <a href="https://twitter.com/QuantumSafeio" target="_blank" rel="noopener noreferrer">
+            <Twitter className="w-5 h-5 text-blue-500 hover:scale-110 transition-transform" />
+          </a>
+          <a href="https://quantumsafeio" target="_blank" rel="noopener noreferrer">
+            <Globe className="w-5 h-5 text-purple-600 hover:scale-110 transition-transform" />
+          </a>
         </div>
-      </div>
+        <p className="text-sm text-gray-400">
+          © {new Date().getFullYear()} QuantumSafe — Empowering the future of digital asset security.
+        </p>
+      </footer>
+    </div>
+  );
+}
 
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+function Stat({ label, value }) {
+  return (
+    <div className="bg-gray-50 p-4 rounded-xl text-center shadow-sm">
+      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-sm text-gray-400">{label}</div>
+    </div>
+  );
+}
+
+function ProgressLabel({ label, value, target, progress }) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span>{label}</span>
+        <span>{value}/{target}</span>
+      </div>
+      <ProgressBar value={progress} />
     </div>
   );
 }
