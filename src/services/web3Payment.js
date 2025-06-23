@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { nhost } from '../lib/nhost';
+import { nhost } from '../lib/supabase';
 
 // Network configurations
 export const PAYMENT_NETWORKS = {

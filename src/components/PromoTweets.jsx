@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PaymentModal from './PaymentModal';
 import PaymentHistory from './PaymentHistory';
+import PointsSystem from './PointsSystem';
 
 // Supported networks and payment addresses
 const NETWORKS = {
@@ -39,35 +40,35 @@ const promoTweets = [
     text: `🚨 Most smart contracts are vulnerable to quantum attacks!
 But now... QuantumSafe 🔐 analyzes and protects your assets with one click.
 Start now 👇
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #Bitcoin #Altcoins #Security #QuantumComputing`
   },
   {
     text: `🚀 Tired of projects collapsing due to small vulnerabilities?
 With #QuantumSafe you'll analyze your contracts and wallets against future threats 👾
 Try it now for free 👇
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #DeFi #CryptoSecurity`
   },
   {
     text: `👨‍💻 The project I was looking for has finally arrived:
 🔐 QuantumSafe = Security beyond ordinary encryption
 Test your smart contract now:
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #zk #SmartContracts #CryptoSecurity`
   },
   {
     text: `📉 Don't wait until your wallet gets hacked!
 Know your weaknesses before hackers do!
 🔎 Complete quantum analysis with QuantumSafe
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #Blockchain #QuantumHack`
   },
   {
     text: `✨ Protecting your wallet? Or waiting for surprises?
 QuantumSafe performs complete scans of your contracts or NFTs before any transaction 💥
 Start earning points and secure your assets 👇
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #NFTs #ETH #SecurityAudit`
   },
   {
@@ -75,20 +76,20 @@ https://quantumsafe.ai
 "Your digital security is more important than your profits"
 Try #QuantumSafe and get a free report just by sharing a tweet!
 Start here 👇
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #DYOR #CryptoSafety`
   },
   {
     text: `📊 Want to check if your contract has vulnerabilities?
 QuantumSafe gives you a comprehensive report on quantum risks ⚛️
 #Web3 #CryptoAudit
-https://quantumsafe.ai`
+https://quantumsafeio.github.io/QuantumSafe/`
   },
   {
     text: `💸 Not every meme token is safe, many are vulnerable to hacking!
 Quick scan from QuantumSafe solves the problem
 Enter your token name and get results in minutes 👇
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #Memecoins #TokenSecurity`
   },
   {
@@ -101,28 +102,28 @@ QuantumSafe.ai = Future of security
     text: `⚡️ Quantum threats are no longer fiction,
 and hackers are closer than you think!
 Protect yourself now with QuantumSafe
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #FutureProof #ZeroTrust`
   },
   {
     text: `🧠 The only project that scans for *unknown* risks
 AI + Quantum Analysis = QuantumSafe
 Share to earn free analysis 👇
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #AI #Quantum #Audit`
   },
   {
     text: `🎯 Simple question: Is your wallet ready for the future?
 If you're not sure, try QuantumSafe now
 and request comprehensive scan for any asset or contract 👇
-https://quantumsafe.ai
+https://quantumsafeio.github.io/QuantumSafe/
 #Wallets #DeFiSecurity`
   }
 ];
 
 export default function PromoTweets() {
   const [copiedIndex, setCopiedIndex] = useState(null);
-  const [activeSection, setActiveSection] = useState('networks'); // networks, tweets, payments
+  const [activeSection, setActiveSection] = useState('points'); // points, networks, tweets, payments
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState('');
 
@@ -148,6 +149,7 @@ export default function PromoTweets() {
   };
 
   const sections = [
+    { id: 'points', label: 'Points & Referrals', icon: '💎' },
     { id: 'networks', label: 'Payment Networks', icon: '💳' },
     { id: 'tweets', label: 'Marketing Content', icon: '🐦' },
     { id: 'payments', label: 'Payment History', icon: '📊' }
@@ -210,6 +212,9 @@ export default function PromoTweets() {
           </button>
         ))}
       </div>
+
+      {/* Points & Referrals Section */}
+      {activeSection === 'points' && <PointsSystem />}
 
       {/* Payment Networks Section */}
       {activeSection === 'networks' && (
@@ -488,21 +493,22 @@ export default function PromoTweets() {
             }}>
               <span style={{ fontSize: '24px' }}>💡</span>
               <strong style={{ color: '#1da1f2', fontSize: '16px' }}>
-                How to Use These Tweets:
+                Enhanced Points System - How to Earn:
               </strong>
             </div>
-            <ul style={{
-              margin: 0,
-              paddingLeft: '20px',
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '16px',
               color: 'rgba(255, 255, 255, 0.9)',
               lineHeight: '1.6'
             }}>
-              <li>Copy any tweet below and share it on your Twitter account</li>
-              <li>Earn +1 point for each tweet shared</li>
-              <li>Get +0.5 points for every 7 likes/retweets</li>
-              <li>Earn +0.5 points for every 3 comments</li>
-              <li>Use your referral link to invite friends and earn 7% of their points</li>
-            </ul>
+              <div>🐦 <strong>Twitter:</strong> 3 points per tweet + 0.05 per engagement</div>
+              <div>📱 <strong>Telegram:</strong> 5 points per post + 0.01 per interaction</div>
+              <div>📺 <strong>YouTube:</strong> 17 points per video + 0.3 per engagement</div>
+              <div>💼 <strong>LinkedIn:</strong> 22 points per article + 0.7 per engagement</div>
+              <div>🔗 <strong>Referrals:</strong> 7% of all referred user points forever</div>
+            </div>
           </div>
 
           <div style={{
@@ -588,7 +594,7 @@ export default function PromoTweets() {
                   fontSize: '12px',
                   color: 'rgba(255, 255, 255, 0.7)'
                 }}>
-                  <strong>Character count:</strong> {tweet.text.length}/280
+                  <strong>Character count:</strong> {tweet.text.length}/280 • <strong>Potential points:</strong> 3 + engagement bonus
                 </div>
               </div>
             ))}
@@ -624,7 +630,7 @@ export default function PromoTweets() {
         }}>
           <span style={{ fontSize: '24px' }}>🚀</span>
           <strong style={{ color: '#ffa502', fontSize: '18px' }}>
-            Boost Your Earnings
+            Maximize Your Earnings
           </strong>
         </div>
         <p style={{
@@ -633,8 +639,8 @@ export default function PromoTweets() {
           lineHeight: '1.6',
           margin: 0
         }}>
-          Share these tweets regularly to maximize your points and help spread awareness about quantum security. 
-          The more engagement your tweets get, the more points you earn! Use our Web3 payment system for instant access to premium services.
+          Use our enhanced points system to earn more through social media engagement, referrals, and premium services. 
+          Connect your wallet to access exclusive features and start building your quantum security empire!
         </p>
       </div>
     </div>

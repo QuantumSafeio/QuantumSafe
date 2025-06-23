@@ -1,9 +1,9 @@
-import { nhost } from '../lib/nhost';
+import { supabase } from '../lib/supabase';
 
 export async function signInWithEmailPassword(email, password) {
-  return nhost.auth.signIn({ email, password });
+  return supabase.auth.signInWithPassword({ email, password });
 }
 
 export async function signUpWithEmailPassword(email, password) {
-  return nhost.auth.signUp({ email, password });
+  return supabase.auth.signUp({ email, password });
 }

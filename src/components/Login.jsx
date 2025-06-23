@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 import React, { useState } from 'react';
 import { Copy, Twitter, Globe } from 'lucide-react';
+=======
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { connectWallet } from '../services/wallet';
+import { signInWithEmailPassword, signUpWithEmailPassword } from '../hooks/nhostAuth';
+import WalletSecurityScanner from './WalletSecurityScanner';
+>>>>>>> 36f9c089939579f9abae2978f8e812369bf76419
 
 // Simple Card and Button components using Tailwind CSS
 function Card({ children, className = '' }) {
@@ -87,6 +95,37 @@ export default function Dashboard({ user, referrals, socialPoints }) {
     });
   };
 
+<<<<<<< HEAD
+=======
+  const isMetaMaskInstalled = () => {
+    return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined';
+  };
+
+  // Example: Insert user profile
+  async function insertUserProfile(user_id, wallet_address) {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .insert({ user_id, wallet_address })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  // Example: Insert user points
+  async function insertUserPoints(user_id, points) {
+    const { data, error } = await supabase
+      .from('user_points')
+      .insert({ user_id, points })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+>>>>>>> 36f9c089939579f9abae2978f8e812369bf76419
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-100 font-sans flex flex-col">
       <header className="py-12 text-center">

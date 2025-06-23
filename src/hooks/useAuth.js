@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { nhost } from '../lib/nhost';
+import { supabase } from '../lib/supabase';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
@@ -10,7 +10,7 @@ export function useAuth() {
 
     const initializeAuth = async () => {
       try {
-        const session = nhost.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (mounted) {
           setUser(session?.user ?? null);
           setLoading(false);
@@ -27,7 +27,7 @@ export function useAuth() {
     initializeAuth();
 
     // Listen for auth changes
-    const unsubscribe = nhost.auth.onAuthStateChanged((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       setUser(session?.user ?? null);
       setLoading(false);
@@ -35,13 +35,13 @@ export function useAuth() {
 
     return () => {
       mounted = false;
-      unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
     try {
-      await nhost.auth.signOut();
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('Sign out error:', error);
     }

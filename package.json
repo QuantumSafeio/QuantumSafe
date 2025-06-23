@@ -1,27 +1,17 @@
 {
   "name": "quantumsafe",
-  "version": "1.0.0",
-  "description": "QuantumSafe - Digital Asset Quantum Protection",
-  "main": "index.js",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "vite",
     "build": "vite build",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "clean": "rm -rf dist node_modules/.cache .vite",
-    "optimize": "npm run clean && npm run build",
-    "deploy": "node deploy.js",
-    "predeploy": "npm run build"
+    "deploy": "npm run build && node deploy.js"
   },
-  "keywords": [
-    "quantum",
-    "blockchain",
-    "security",
-    "crypto",
-    "web3"
-  ],
-  "author": "QuantumSafe Team",
-  "license": "MIT",
   "dependencies": {
+<<<<<<< HEAD
     "@nhost/nhost-js": "^3.2.9",
     "@solana/web3.js": "^1.98.2",
     "@supabase/supabase-js": "^2.39.7",
@@ -29,19 +19,33 @@
     "ethers": "^6.14.4",
     "framer-motion": "^12.18.1",
     "lucide-react": "^0.522.0",
+=======
+    "@supabase/supabase-js": "^2.39.3",
+    "lucide-react": "^0.263.1",
+>>>>>>> 36f9c089939579f9abae2978f8e812369bf76419
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3",
-    "react-toastify": "^11.0.5",
-    "terser": "^5.30.3",
-    "web3modal": "^1.9.12"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "@tailwindcss/postcss": "^4.1.10",
     "@vitejs/plugin-react": "^4.5.2",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.10",
     "vite": "^5.2.8"
+=======
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "autoprefixer": "^10.4.14",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "postcss": "^8.4.27",
+    "tailwindcss": "^3.3.3",
+    "vite": "^4.4.5"
+>>>>>>> 36f9c089939579f9abae2978f8e812369bf76419
   }
 }
